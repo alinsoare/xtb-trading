@@ -26,6 +26,8 @@ uv run pytest                    # backend
 node tests/js/run_fixtures.mjs   # FVG golden-fixture tests (dev-time only)
 node tests/js/run_space_fixtures.mjs # FVG close-to-open-space rule tests (dev-time only)
 node tests/js/run_ob_fixtures.mjs # OB parity vs MT5 export (dev-time only)
+node tests/js/run_macd_fixtures.mjs # MACD parity vs MT5 export (dev-time only)
+node tests/js/run_mt5math.mjs    # MT5 EMA helpers (dev-time only)
 node tests/js/run_measure.mjs    # ruler measurement math (dev-time only)
 node tests/js/run_settings.mjs   # persisted settings + display limit (dev-time only)
 node tests/js/run_scroll_lock.mjs # chart-tool drag-pan suppression + undo (dev-time only)
@@ -173,6 +175,20 @@ oracle and the fixtures come from a running terminal:
 4. `node tests/js/run_ob_fixtures.mjs` compares the pivot sequence first and
    only then the zones, so a structural divergence is reported as structural
    instead of surfacing as a handful of misplaced rectangles.
+
+### Regenerating the MACD fixtures
+
+Like OB, MT5 is the oracle. `SimpleMACD` must be configured 13/34/9 on typical
+price — the export script passes `PRICE_TYPICAL` into `iCustom`.
+
+1. Open **XAUUSD D1** in MT5-Testing and run the `ExportMacdOracle` script on
+   that chart. It writes JSON to `MQL5/Files/macd_oracle/`. Source:
+   `tools/mql5/ExportMacdOracle.mq5` (compile via MetaEditor only when the
+   source changes).
+2. `uv run python tools/copy_macd_fixture.py` copies the JSON into
+   `tests/fixtures/macd/`.
+3. `node tests/js/run_macd_fixtures.mjs` compares main, signal and histogram
+   arrays value by value.
 
 ## Releasing to GitHub Pages
 

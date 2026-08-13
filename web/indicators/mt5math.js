@@ -25,6 +25,26 @@ export function mt5Ema(values, period) {
   return out;
 }
 
+/* EMA of a series whose warm-up starts at `firstValidIndex`, mirroring
+ * CalcEmaFromSeries in SimpleMACD.mq5: seed at firstValidIndex + period − 1
+ * with the SMA of values[firstValidIndex .. firstValidIndex + period − 1]. */
+export function mt5EmaFromSeries(values, period, firstValidIndex) {
+  const n = values.length;
+  const out = new Array(n).fill(NaN);
+  const firstEma = firstValidIndex + period - 1;
+  if (period < 1 || firstEma >= n) return out;
+
+  let sum = 0;
+  for (let k = 0; k < period; k++) sum += values[firstValidIndex + k];
+  out[firstEma] = sum / period;
+
+  const k = 2 / (period + 1);
+  for (let i = firstEma + 1; i < n; i++) {
+    out[i] = out[i - 1] + k * (values[i] - out[i - 1]);
+  }
+  return out;
+}
+
 export function mt5Stochastic(high, low, close, kPeriod = 21, slowing = 9) {
   const n = close.length;
 

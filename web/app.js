@@ -14,6 +14,7 @@ import "./chart-tools/ruler.js"; // registers the ruler tool
 import { allIndicators, IndicatorPrimitive } from "./indicators/registry.js";
 import "./indicators/fvg.js"; // registers the FVG indicator
 import "./indicators/ob.js"; // registers the OB indicator
+import "./indicators/macd.js"; // registers the MACD indicator
 import {
   DEFAULT_DISPLAY_LIMIT,
   applyDisplayLimit,
@@ -106,6 +107,76 @@ const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
 
 const indicatorPrimitive = new IndicatorPrimitive();
 candleSeries.attachPrimitive(indicatorPrimitive);
+
+/* Pane indicators own a separate sub-pane each. Keys are indicator ids; values
+ * hold the chart series and any price lines created for reference levels. */
+const indicatorPanes = new Map();
+
+function refreshPaneIndices() {
+  const panes = chart.panes();
+  for (const entry of indicatorPanes.values()) {
+    if (!entry.series.length) continue;
+    const idx = panes.findIndex((pane) => pane.getSeries().includes(entry.series[0]));
+    if (idx >= 0) entry.paneIndex = idx;
+  }
+}
+
+function removeIndicatorPane(indicatorId) {
+  const entry = indicatorPanes.get(indicatorId);
+  if (!entry) return;
+
+  const paneIndex = entry.paneIndex;
+  for (const series of entry.series) {
+    chart.removeSeries(series);
+  }
+  if (paneIndex !== undefined && paneIndex < chart.panes().length) {
+    chart.removePane(paneIndex);
+  }
+  indicatorPanes.delete(indicatorId);
+  refreshPaneIndices();
+}
+
+function syncPaneIndicator(indicatorId, result) {
+  let entry = indicatorPanes.get(indicatorId);
+  if (!entry) {
+    const paneIndex = chart.panes().length;
+    const series = [];
+    const priceLines = [];
+    for (const spec of result.paneSeries) {
+      const SeriesType =
+        spec.kind === "histogram"
+          ? LightweightCharts.HistogramSeries
+          : LightweightCharts.LineSeries;
+      const options = {
+        title: spec.title,
+        color: spec.color,
+        priceLineVisible: false,
+        lastValueVisible: spec.kind === "line",
+        ...(spec.kind === "line" ? { lineWidth: spec.lineWidth ?? 1 } : {}),
+      };
+      series.push(chart.addSeries(SeriesType, options, paneIndex));
+    }
+    if (result.referenceLines?.length && series[0]) {
+      for (const ref of result.referenceLines) {
+        priceLines.push(
+          series[0].createPriceLine({
+            price: ref.value,
+            color: ref.color,
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dashed,
+            axisLabelVisible: false,
+          }),
+        );
+      }
+    }
+    entry = { paneIndex, series, priceLines };
+    indicatorPanes.set(indicatorId, entry);
+  }
+
+  for (let i = 0; i < result.paneSeries.length; i++) {
+    entry.series[i].setData(result.paneSeries[i].data);
+  }
+}
 
 /* What a chart tool is handed on activation. Bars and instrument are accessors
  * because both change under the tool as the user browses. */
@@ -240,6 +311,7 @@ function recomputeIndicators() {
   // a limit change recomputes because the slice it reads has changed.
   const drawables = [];
   const notices = [];
+  const activePaneIds = new Set();
   const instrument = currentInstrument();
 
   for (const indicator of allIndicators()) {
@@ -256,7 +328,16 @@ function recomputeIndicators() {
     }
     const result = indicator.compute(state.bars, instrument);
     if (result.warning) notices.push(`${indicator.label}: ${result.warning}`);
-    drawables.push(...(result.drawables || []));
+    if (indicator.render === "pane") {
+      syncPaneIndicator(indicator.id, result);
+      activePaneIds.add(indicator.id);
+    } else {
+      drawables.push(...(result.drawables || []));
+    }
+  }
+
+  for (const id of indicatorPanes.keys()) {
+    if (!activePaneIds.has(id)) removeIndicatorPane(id);
   }
 
   indicatorPrimitive.setDrawables(drawables);

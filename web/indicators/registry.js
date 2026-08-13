@@ -1,15 +1,27 @@
 /* Indicator registry and the generic chart primitive that renders indicator output.
  *
  * An indicator registers:
- *   { id, label, minBars, compute(bars, instrument) -> { drawables, warning } }
+ *   { id, label, minBars, render?: "zones" | "pane", compute(bars, instrument) }
  *
- * Drawables are plain data, so this module has no chart or DOM dependency and
- * the dev-time Node test harness can import indicator modules directly.
+ * `render` defaults to "zones". Zone indicators return drawables; pane indicators
+ * return pane series. The chart layer routes by `render`, not by inspecting keys.
+ *
+ * Zone compute result:
+ *   { drawables: Drawable[], warning?: string }
+ *
+ * Pane compute result:
+ *   { paneSeries: PaneSeries[], referenceLines?: ReferenceLine[], warning?: string }
  *
  * Drawable shapes:
  *   { type: "rect",  timeFrom, timeTo, priceLow, priceHigh, color,
  *     style?: "stroke" | "fill", lineWidth?: number }  // stroke default, lineWidth 1
  *   { type: "label", time, price, text, color, baseline: "top" | "bottom" }
+ *
+ * Pane series:
+ *   { kind: "line" | "histogram", title, color, data: [{ time, value, color? }] }
+ *
+ * Reference lines:
+ *   { value, color }
  */
 
 import { xCoordinate } from "../chart/coords.js";
@@ -20,9 +32,38 @@ export function registerIndicator(spec) {
   for (const key of ["id", "label", "minBars", "compute"]) {
     if (!(key in spec)) throw new Error(`indicator registration missing ${key}`);
   }
+  const render = spec.render ?? "zones";
+  if (render !== "zones" && render !== "pane") {
+    throw new Error(`indicator ${spec.id}: render must be "zones" or "pane"`);
+  }
   if (indicators.some((i) => i.id === spec.id)) {
     throw new Error(`indicator ${spec.id} already registered`);
   }
+
+  const compute = spec.compute;
+  spec = {
+    ...spec,
+    render,
+    compute(bars, instrument) {
+      const result = compute(bars, instrument);
+      if (render === "zones") {
+        if (result.paneSeries) {
+          throw new Error(`indicator ${spec.id}: zone indicator returned paneSeries`);
+        }
+        if (!result.drawables) {
+          throw new Error(`indicator ${spec.id}: zone indicator missing drawables`);
+        }
+      } else {
+        if (result.drawables) {
+          throw new Error(`indicator ${spec.id}: pane indicator returned drawables`);
+        }
+        if (!result.paneSeries) {
+          throw new Error(`indicator ${spec.id}: pane indicator missing paneSeries`);
+        }
+      }
+      return result;
+    },
+  };
   indicators.push(spec);
 }
 
