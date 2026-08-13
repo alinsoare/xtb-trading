@@ -7,6 +7,8 @@ description: "Archive a completed change in the experimental workflow"
 
 Archive a completed change in the experimental workflow.
 
+**Delegation**: Run this workflow in the `opsx-archiver` subagent rather than in this thread. Invoking this command is the user's go-ahead, so delegate straight away without asking again. Hand the subagent the change name and any context from this conversation it needs, since it starts with an empty context window. Do not do the work yourself unless the subagent is unavailable, in which case fall back to the steps below. When it returns, relay its report.
+
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
 `<capability-path>` is the spec directory relative to `specs/` (for example, `user-auth` or `identity/user-auth`). Preserve the full path from each delta spec when resolving its main spec.

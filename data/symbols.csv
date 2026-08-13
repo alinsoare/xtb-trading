@@ -1,0 +1,9 @@
+xtb_symbol,xtb_name,yahoo_symbol,name,asset_class,instrument_type,exchange,quote_currency,point_size,price_divisor,enabled
+ABEA.DE,Alphabet Inc - class A,ABEA.DE,Alphabet Inc.,STOCK,REAL,XETRA,EUR,0.01,1,true
+NVD.DE,NVIDIA Corp,NVD.DE,NVIDIA Corporation,STOCK,REAL,XETRA,EUR,0.01,1,true
+TSLA.DE,Tesla Inc.,TL0.DE,"Tesla, Inc.",STOCK,REAL,XETRA,EUR,0.01,1,true
+S0LR.DE,Invesco Solar Energy UCITS ETF,S0LR.DE,Invesco Solar Energy UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+XAD6.DE,Xtrackers Physical Silver ETC,XAD6.DE,Xtrackers Physical Silver ETC (EUR),ETC,REAL,XETRA,EUR,0.01,1,true
+IDR.ES,Indra Sistemas SA,IDR.MC,"Indra Sistemas, S.A.",STOCK,REAL,BME Madrid,EUR,0.01,1,true
+AAPL.US,Apple Inc CFD,AAPL,Apple Inc.,STOCK,CFD,NASDAQ,USD,0.01,1,true
+GLD.US,SPDR Gold Shares CFD,GLD,SPDR Gold Shares,ETF,CFD,NYSE Arca,USD,0.01,1,false

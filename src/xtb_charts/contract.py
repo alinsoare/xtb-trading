@@ -1,0 +1,108 @@
+"""The JSON data contract shared by the dev server and the static exporter.
+
+The frontend fetches these shapes at the same relative URLs in both modes:
+- ``data/meta.json``
+- ``data/catalog.json``
+- ``data/candles/<symbol>/<timeframe>.json``
+
+Both the dev API and the exporter build their payloads here, so the two
+cannot drift apart.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from datetime import UTC, datetime
+
+from . import store
+from .catalog import Instrument
+from .config import BASE_CURRENCY, TIMEFRAME_ORDER, TIMEFRAMES
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def build_meta(conn: sqlite3.Connection, mode: str) -> dict:
+    """``data/meta.json``: mode, snapshot time, timeframe definitions."""
+    return {
+        "generated_utc": _now_iso(),
+        "mode": mode,  # "dev" | "static" — the frontend keys sync controls off this
+        "base_currency": BASE_CURRENCY,
+        "timeframe_order": TIMEFRAME_ORDER,
+        "timeframes": {
+            key: {"label": tf.label, "seconds": tf.seconds}
+            for key, tf in TIMEFRAMES.items()
+        },
+    }
+
+
+def build_catalog(conn: sqlite3.Connection, instruments: list[Instrument]) -> dict:
+    """``data/catalog.json``: instruments enriched with what the database knows."""
+    counts = store.bar_counts(conn)
+    state = store.get_sync_state(conn)
+
+    payload = []
+    for instrument in instruments:
+        observed = store.observed_currency(conn, instrument.xtb_symbol)
+        reasons = instrument.incompatibility_reasons(observed)
+
+        per_tf = {}
+        for tf_key in TIMEFRAME_ORDER:
+            entry = state.get((instrument.xtb_symbol, tf_key), {})
+            per_tf[tf_key] = {
+                "bars": counts.get((instrument.xtb_symbol, tf_key), 0),
+                "last_sync_utc": entry.get("last_sync_utc"),
+                "status": entry.get("status"),
+                "message": entry.get("message"),
+            }
+
+        last_syncs = [v["last_sync_utc"] for v in per_tf.values() if v["last_sync_utc"]]
+        payload.append(
+            {
+                "xtb_symbol": instrument.xtb_symbol,
+                "xtb_name": instrument.xtb_name,
+                "yahoo_symbol": instrument.yahoo_symbol,
+                "name": instrument.name,
+                "asset_class": instrument.asset_class,
+                "instrument_type": instrument.instrument_type,
+                "exchange": instrument.exchange,
+                "quote_currency": instrument.effective_currency(observed),
+                "catalog_currency": instrument.quote_currency,
+                "observed_currency": observed,
+                "point_size": instrument.point_size,
+                "enabled": instrument.enabled,
+                "compatible": not reasons,
+                "incompatibility": reasons,
+                "warnings": instrument.warnings(observed),
+                "total_bars": sum(v["bars"] for v in per_tf.values()),
+                "last_sync_utc": max(last_syncs) if last_syncs else None,
+                "timeframes": per_tf,
+            }
+        )
+    return {"generated_utc": _now_iso(), "symbols": payload}
+
+
+def build_candles(conn: sqlite3.Connection, symbol: str, tf_key: str) -> dict:
+    """``data/candles/<symbol>/<timeframe>.json``.
+
+    ``time`` is UTC epoch SECONDS — what lightweight-charts expects. JavaScript
+    ``Date`` works in milliseconds; the frontend must multiply before any date
+    arithmetic.
+    """
+    bars = store.get_bars(conn, symbol, tf_key)
+    return {
+        "symbol": symbol,
+        "timeframe": tf_key,
+        "candles": [
+            {
+                "time": b.ts,
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "volume": b.volume,
+            }
+            for b in bars
+        ],
+    }

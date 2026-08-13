@@ -7,6 +7,8 @@ description: "Propose a new change - create it and generate all artifacts in one
 
 Propose a new change - create the change and generate all artifacts in one step.
 
+**Delegation**: Run this workflow in the `opsx-proposer` subagent rather than in this thread. Hand it the user's request verbatim plus any context from this conversation it needs, since it starts with an empty context window. Do not do the work yourself unless the subagent is unavailable, in which case fall back to the steps below. When it returns, relay its report and then stop at the **Approval gate**.
+
 **Planning boundary**: This workflow creates planning artifacts only. The user request that selected or triggered this workflow authorizes planning only, even if it asks to build or fix something. Do not edit project code. After the planning artifacts are complete, stop. Do not start implementation in the same response, even if the initial request asks for it. Wait for a new user request after the artifacts are presented; then start the apply workflow.
 
 I'll create a change with the artifacts your schema defines. With the default spec-driven schema that is:
@@ -122,7 +124,14 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions, plus any conditional artifact you skipped and why
 - What's ready: "All artifacts needed for implementation are ready."
-- Prompt: "The artifacts are ready for review. When you are ready, run `/opsx-apply`."
+
+**Approval gate**
+
+Then stop and ask the user to approve the plan before anything else happens:
+
+> "Does this plan look right? Approve it and run `/opsx-apply` when you're ready, or tell me what to change."
+
+Do not start implementing, do not run the apply workflow, and do not delegate to `opsx-applyer` in this response — even if the original request asked you to build the thing. Wait for the user's approval as a new message. If they ask for revisions instead, use `/opsx-update` to revise the artifacts and return to this gate.
 
 **Artifact Creation Guidelines**
 

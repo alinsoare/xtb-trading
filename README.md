@@ -1,23 +1,268 @@
-# XTB Trading (OpenSpec Rebuild)
+# XTB Charts
 
-A ground-up rebuild of [`xtb-trading`](../xtb-trading), planned with
-[OpenSpec](https://openspec.dev/) instead of implemented directly.
+Offline-first OHLC candlestick charts for a curated list of XTB instruments
+(stocks / ETF / ETC), with price data sourced from Yahoo Finance and stored
+locally in SQLite. A ground-up rebuild of [`xtb-trading`](../xtb-trading),
+planned and tracked with [OpenSpec](https://openspec.dev/) (see `openspec/`).
 
-`../xtb-trading` is the behavioral reference, not a dependency: an offline-first
-candlestick charting app for a curated list of XTB instruments, backed by Yahoo
-Finance data in SQLite, with a Python/uv backend and a build-step-free vanilla JS
-frontend. Nothing here copies its code or git history — the goal is to replan the
-same problem from scratch, capture the requirements as living specs, and let the
-implementation follow from an agreed plan.
+**The data is always offline.** Nothing is fetched because you opened a chart.
+A sync happens only when you ask for one — a button in the dev UI, a periodic
+refresh you switch on for the current session, the sync CLI, or a manually
+dispatched release workflow. If the data looks stale, the answer is a sync,
+never an implicit fetch.
 
-## Status
+## Quick start (dev mode)
 
-Not yet started. OpenSpec is scaffolded; no proposal has been written yet.
+```bash
+uv sync
+uv run xtb-charts serve          # http://127.0.0.1:8000
+```
 
-## Working with this repo
+Open the app and press **Sync all** to populate the database. Run the tests
+with:
 
-- `openspec/specs/` holds the source-of-truth requirements once they exist.
-- `openspec/changes/` holds in-flight proposals (see `/opsx:propose` in the
- OpenSpec docs).
-- Run OpenSpec's `/opsx:explore` or `/opsx:propose` in chat to start planning the
- rebuild.
+```bash
+uv run pytest                    # backend
+node tests/js/run_fixtures.mjs   # FVG golden-fixture tests (dev-time only)
+node tests/js/run_space_fixtures.mjs # FVG close-to-open-space rule tests (dev-time only)
+node tests/js/run_ob_fixtures.mjs # OB parity vs MT5 export (dev-time only)
+node tests/js/run_measure.mjs    # ruler measurement math (dev-time only)
+node tests/js/run_settings.mjs   # persisted settings + display limit (dev-time only)
+node tests/js/run_scroll_lock.mjs # chart-tool drag-pan suppression + undo (dev-time only)
+```
+
+## Two modes, one frontend
+
+The frontend reads a static-friendly JSON contract (`data/meta.json`,
+`data/catalog.json`, `data/candles/<symbol>/<timeframe>.json`) and behaves the
+same wherever those files come from:
+
+- **Dev mode** — `uv run xtb-charts serve`: FastAPI serves the contract
+  dynamically from SQLite and adds the sync endpoints. Sync controls visible.
+- **Static mode** — the exporter writes the same shapes to `dist/`; any static
+  file server can host the result. Sync controls absent. This is exactly what
+  GitHub Pages serves.
+
+## Timeframes and fetch depth
+
+**How deep a sync fetches** is a fixed property of the timeframe, not something
+a run tunes. There is no bar target to set: on three of the four timeframes the
+answer is already "everything the source has".
+
+| Timeframe | Yahoo interval | Initial backfill | Note |
+| --------- | -------------- | ---------------- | ---- |
+| M15       | `15m`          | up to 1,200 bars | Yahoo caps `15m` at 60 days, which usually binds first; older gaps are permanent |
+| H1        | `1h`           | as deep as served | Yahoo caps `1h` at ~730 days |
+| D1        | `1d`           | full history      | uncapped by the source |
+| W1        | `1wk`          | full history      | uncapped by the source |
+
+**Storage is append-only.** A sync adds bars and overwrites bars it re-fetched;
+it never deletes one. A series therefore only grows, keeps history the source
+will no longer serve, and may reach further back than the fetch window above.
+Sync M15 at least every 60 days or it develops gaps that can never be
+backfilled — the other timeframes always backfill.
+
+A repeat sync requests only from just before the newest stored bar, so its cost
+does not grow with how deep the series has become. `--full` re-pulls each
+timeframe's whole fetch window; bars older than that window survive it.
+
+## Chart display limit
+
+How much you *look at* is separate from how much is fetched, and it is yours to
+set: the **bars** field in the toolbar takes a positive whole number or the word
+`all`, and defaults to the 5,000 most recent bars on every timeframe. Changing
+it re-slices the bars already in the browser — there is no refetch, and a lower
+limit does not make the page load faster (the limit bounds drawing, not
+downloading). Zero, a negative number, and anything that is not a number are
+refused, leaving the previous limit in force. Because a measurement's anchors
+may fall outside the new view, changing the limit discards a drawn measurement.
+
+### What the browser remembers
+
+Settings are stored per browser under a single `localStorage` key and restored
+on the next load: display limit, selected instrument, selected timeframe,
+enabled indicators, and the sidebar filters (search text, asset class,
+compatible-only). Anything that no longer resolves — a renamed instrument, an
+unknown timeframe — falls back to its default without disturbing the rest, and
+a browser that denies storage just runs on defaults.
+
+Sync state is deliberately excluded, so a reload can never resume fetching:
+**full refresh** and **auto 15m** both come back off. Measurements and zoom
+position are not restored either. None of this travels with the exported data.
+
+## Periodic refresh (dev mode only)
+
+The **auto 15m** checkbox next to the sync buttons runs an incremental sync
+every 15 minutes for as long as it is on. It is off by default, authorizes
+refreshes for the current session only — a reload always turns it off — and a
+tick that lands while a sync is running is dropped rather than queued. It does
+not exist on the published site, which has no backend to sync with.
+
+Each refresh skips any symbol/timeframe where less than one bar's duration has
+passed since its newest stored bar, because the source cannot yet have a bar
+that is not already held: W1 is left alone for seven days, D1 for 24 hours, so
+in practice only M15 and H1 do any work. A skipped timeframe keeps the
+freshness of the last run that actually fetched it. Pressing a sync button
+always fetches everything — the rule applies to periodic runs only.
+
+## Indicators
+
+Indicators are computed client-side in JavaScript from the bars on the chart
+and toggle individually — no server, so they work identically on the static
+site. Both are ports of MQL5 indicators with their signal-parity conventions
+preserved, and both scan the whole displayed series so every detected zone is
+visible at once. Raising the display limit deepens the scan; setting it below an
+indicator's warm-up produces the insufficient-history warning rather than a
+silently empty chart, even when far more bars are stored.
+
+**FVG** is a Fair Value Gap scanner ported from `FVGSignal.mq5`. Two deliberate
+deviations from that source, recorded in the file header and the indicators
+spec:
+
+- The recent-bars scan cap is dropped, so every detected zone is visible deep in
+  history.
+- Displacement rules (body dominance, bar3's wick limit, the gap-vs-bar2-range
+  ratio) read **close-to-open-spaces**: when two same-type bars are adjacent and
+  the later opens beyond the earlier's close, the move from the previous close
+  to this close is credited to the later bar's body and range. The gap, zone
+  edges, and drawing still use recorded OHLC.
+
+Golden fixtures under `tests/fixtures/fvg/` come from the Python reference and
+prove numeric conventions (EMA seeding, stochastic, warm-up warning). Space
+behaviour is covered separately by hand-checked cases in
+`tests/fixtures/fvg-spaces/`.
+
+**OB** is an Order Block scanner ported from `SMCTrading.mq5` v3.23. It marks
+the last opposing candle before an impulse that broke structure: demand zones in
+green, supply zones in pink, each labelled `OB`. Only the zones are drawn, but
+they rest on a full internal port of the source's swing-pivot detection,
+points-based confirmation, structural break tracking and impulse/pullback
+classification, none of which is rendered. The source's slow-RSI block is not
+ported at all — it is dead code there, computed but never read.
+
+Four deliberate deviations from `SMCTrading.mq5`, recorded in `OB_PARAMS`:
+
+- The lookback cap is dropped, so zones stay visible deep in history.
+- Every detected zone is drawn, matching the source's history mode rather than
+  its live view, which hides counter-trend zones and all but the newest swing.
+- The newest stored bar stands in for MT5's forming bar and never becomes a zone
+  or a confirmed pivot, the same convention FVG follows.
+- The skip-bar interval is dropped: the source refuses pivots on bars opening in
+  a server-time window below H4, while this port takes **every bar as real
+  data**. Parity is therefore claimed only at H4 and above, where that filter is
+  inert in the source; on m15 and h1 the two read different bar sets and their
+  zones can legitimately differ.
+
+### Regenerating the OB fixtures
+
+Unlike FVG there is no Python reference implementation, so MT5 itself is the
+oracle and the fixtures come from a running terminal:
+
+1. Open a chart at H4 or above (D1 is the verified case) in the MT5 install used
+   for testing, attach `SMCTrading` with `InpShowHistory = true`, and force a
+   full recalculation by reloading the indicator or switching timeframe and back.
+   The port reconstructs the series in one pass, which matches MT5's recalculated
+   state rather than the state a long-running chart accumulates.
+2. Run the `ExportOBOracle` script on that chart. It writes `bars_`, `pivots_`,
+   `zones_` and `meta_` CSVs to `MQL5/Files/ob_oracle/`. Its source lives at
+   `tools/mql5/ExportOBOracle.mq5`; compile it from a path without spaces, since
+   MetaEditor's `/compile:` flag fails silently on spaces.
+3. `uv run python tools/generate_ob_fixtures.py` turns those CSVs into
+   `tests/fixtures/ob/`, taking the point size from the `meta_` export because
+   the confirmation distance is measured in points.
+4. `node tests/js/run_ob_fixtures.mjs` compares the pivot sequence first and
+   only then the zones, so a structural divergence is reported as structural
+   instead of surfacing as a handful of misplaced rectangles.
+
+## Releasing to GitHub Pages
+
+`main` is development. A release is a manually dispatched GitHub Actions
+workflow that restores the previous `market.db` snapshot from the `data`
+branch, runs an incremental sync, commits the snapshot back, exports the
+static site, and deploys it to Pages. Data is never re-pulled from scratch, and
+no release drops bars the snapshot already holds.
+
+The dispatch carries one choice, **full refresh**. There are no bar-target
+inputs: fetch depth is fixed per timeframe. Each release exports every stored
+bar, so the published payload grows as history accumulates.
+
+### Rehearse locally first
+
+Every step except the deploy runs the same commands locally:
+
+```bash
+uv run xtb-charts sync           # or: sync --full
+uv run xtb-charts export         # writes the static site to dist/
+python3 -m http.server -d dist 8080
+```
+
+Browse <http://127.0.0.1:8080> — that is byte-for-byte the site Pages will
+serve.
+
+### Deepening an existing database
+
+A database synced before fetch depth and pruning were separated holds roughly
+1,000 bars per timeframe. Nothing breaks: bars are only ever added from here on.
+To actually reach the new depth, run **one full refresh per symbol**
+(`uv run xtb-charts sync --full`, or a dispatch with full refresh) — a slow,
+expected, one-time pull. Until then the app behaves as before, with the display
+limit simply exceeding what is stored.
+
+Expect the export to grow accordingly: roughly 3.6 MB before, about 20 MB after
+deepening the eight seeded instruments, and larger with each release.
+
+Rolling this change back is **not** symmetric — the restored code prunes to its
+target on the next sync and would delete the accumulated history. Copy the
+current snapshot aside before reverting.
+
+### Manual snapshot fallback
+
+If Yahoo rate-limits the CI runner, or you would rather do the first long
+backfill on your own connection, sync locally and push the snapshot yourself.
+The workflow restores whatever the `data` branch holds, so the next dispatch
+picks up from your snapshot and syncs incrementally on top of it.
+
+The branch layout is a contract: `data` is a single root commit whose tree
+holds exactly one file, `market.db`, **at the root** — not under `data/`.
+Committing it the ordinary way (`git add data/market.db`) puts the blob at the
+wrong path, and the workflow's restore step then finds nothing and falls back
+to a full backfill. These commands write it the way CI does, without touching
+your working tree, branches, or `HEAD`:
+
+```bash
+uv run xtb-charts sync           # refresh data/market.db locally first
+blob=$(git hash-object -w data/market.db)
+tree=$(printf '100644 blob %s\tmarket.db\n' "$blob" | git mktree)
+commit=$(git commit-tree "$tree" -m "data snapshot $(date -u +%FT%TZ)")
+git push --force origin "$commit:refs/heads/data"
+```
+
+The force push is deliberate: every snapshot is a fresh root commit, so the
+branch keeps one copy of the database rather than accumulating each release's
+binary forever. Never merge or rebase `data` into a code branch — it is an
+orphan ref holding that single file.
+
+To go the other way and inspect the snapshot CI produced:
+
+```bash
+git fetch origin data
+git cat-file blob FETCH_HEAD:market.db > data/market.db
+```
+
+## Adding a symbol
+
+Add a row to `data/symbols.csv` and verify the ticker against Yahoo before
+enabling it — XTB and Yahoo symbols differ in exchange suffix (`.UK` → `.L`,
+`.FR` → `.PA`, `IDR.ES` → `IDR.MC`) and sometimes in ticker root (`TSLA.DE`
+is `TL0.DE` on Yahoo). Copy `xtb_name` **verbatim** from xStation: CFD
+detection reads that string, and it is the only thing distinguishing
+"Alphabet Inc CFD - class A" from "Alphabet Inc - class A".
+
+`point_size` should be the instrument's real tick size, because it sets how many
+decimals the chart shows: `0.01` gives two, `0.00001` gives five, everywhere a
+price appears (price scale, crosshair, OHLC legend, ruler readout). Claiming a
+finer tick than the instrument trades at surfaces floating-point noise — a close
+of `296.30` renders as `296.29999`.
+
+The portfolio compatibility flags (non-EUR quote currency, CFD) are warnings,
+not blocks — flagged instruments still chart normally.

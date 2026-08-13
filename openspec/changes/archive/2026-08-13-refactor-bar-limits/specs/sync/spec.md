@@ -1,0 +1,115 @@
+## ADDED Requirements
+
+### Requirement: Sync scope is symbols and refresh mode
+
+The user SHALL be able to sync all enabled instruments or a chosen subset, and to choose
+between an incremental run and a full refresh that re-pulls each timeframe's whole fetch
+window. A sync run SHALL NOT carry any bar-count or depth parameter: depth is a property of
+the timeframe, so the only choices a run offers are which symbols to sync and whether to
+re-pull rather than extend.
+
+#### Scenario: Sync a single symbol
+
+- **WHEN** the user triggers a sync for one selected symbol
+- **THEN** only that symbol is fetched and updated
+
+#### Scenario: Full refresh
+
+- **WHEN** the user triggers a sync with the full-refresh option
+- **THEN** each timeframe is re-requested from the start of its fetch window rather than incrementally, and bars older than that window are retained
+
+#### Scenario: Depth parameters are refused
+
+- **WHEN** a sync is requested with a bar-count target for a timeframe
+- **THEN** the request is refused as invalid rather than silently ignored, because a caller supplying one is working from a contract that no longer exists
+
+### Requirement: Optional periodic refresh
+
+Where a backend is available, the UI SHALL offer a control that repeatedly runs an
+incremental sync while it is switched on, at a fixed interval of 15 minutes. It SHALL be off
+by default, SHALL start no sync until the user switches it on, and SHALL NOT be restored
+automatically on a later page load — switching it on authorizes refreshes for the current
+session only. Each refresh SHALL use the same incremental path as a manual run, SHALL skip
+timeframes that cannot yet have a new bar, and SHALL be suppressed while a sync is already
+running rather than queued. Switching the control off or leaving the page SHALL stop further
+refreshes. The published static site, having no backend, SHALL NOT offer the control.
+
+#### Scenario: Turning periodic refresh on
+
+- **WHEN** the user switches the control on
+- **THEN** an incremental sync runs every 15 minutes for as long as it stays on, and the run's progress is reported exactly as a manual run's is
+
+#### Scenario: Nothing happens until it is switched on
+
+- **WHEN** the user loads the app, browses charts, and never touches the control
+- **THEN** no sync runs and no market-data request is made
+
+#### Scenario: Not resumed on reload
+
+- **WHEN** the user leaves periodic refresh on and reloads the page
+- **THEN** the control is off again and no sync runs until the user switches it on
+
+#### Scenario: A refresh arriving during a run is dropped
+
+- **WHEN** the interval elapses while a sync is still running
+- **THEN** that refresh is skipped rather than queued, and the running sync is unaffected
+
+### Requirement: A periodic refresh skips timeframes that cannot have a new bar
+
+A periodic refresh SHALL skip any symbol/timeframe where less than one bar's duration has
+elapsed since its newest stored bar, because the source cannot yet have a bar the system does
+not already hold: a weekly series is left alone until seven days have passed, a daily series
+until 24 hours have. A skipped timeframe SHALL be reported as skipped in the run's results and
+SHALL leave its recorded sync state unchanged, so freshness continues to reflect the last run
+that actually fetched. A manual sync SHALL NOT apply this rule: pressing a sync control always
+fetches.
+
+#### Scenario: Weekly series left alone
+
+- **WHEN** a periodic refresh runs two days after a symbol's newest stored W1 bar
+- **THEN** its W1 timeframe is skipped and reported as skipped, while M15 is still fetched
+
+#### Scenario: Intraday series still refreshed
+
+- **WHEN** a periodic refresh runs 20 minutes after a symbol's newest stored M15 bar
+- **THEN** its M15 timeframe is fetched incrementally
+
+#### Scenario: Never-synced timeframe is not skipped
+
+- **WHEN** a periodic refresh runs for a symbol/timeframe that holds no bars
+- **THEN** it is fetched rather than skipped, because there is no newest bar to measure against
+
+#### Scenario: Manual sync ignores the rule
+
+- **WHEN** the user presses a sync control moments after a successful sync
+- **THEN** every timeframe is fetched, with no timeframe skipped for being too recent
+
+## MODIFIED Requirements
+
+### Requirement: Sync runs only on explicit user action
+
+A sync SHALL start only because the user asked for one — a sync control pressed, or a
+periodic refresh the user switched on for the current session. The system SHALL NOT schedule
+syncs outside that opt-in, run them at startup, resume a previously enabled periodic refresh
+on a later load, or fetch market data as a side effect of loading or viewing a chart. In CI,
+the release workflow's manual dispatch counts as the explicit user action.
+
+#### Scenario: Viewing a chart is offline
+
+- **WHEN** the user opens the app and browses charts without pressing a sync control
+- **THEN** no request is made to the market data source
+
+## REMOVED Requirements
+
+### Requirement: Sync scope selection
+
+**Reason**: Replaced by "Sync scope is symbols and refresh mode". The old requirement made a
+per-run bar-count target part of a sync's scope and promised the adjusted value would persist
+as the effective target; with fetch depth fixed per timeframe and storage append-only, there
+is no target to carry, persist, or clamp. The symbol-selection and full-refresh halves carry
+over unchanged.
+
+**Migration**: Callers that passed per-timeframe targets — the `--target TF=BARS` command-line
+option, the `targets` field on the sync request, and the release workflow's four target
+inputs — drop them; the same depth now happens by default. Raising a target to see more
+history is replaced by the chart's display limit, which needs no sync at all.

@@ -20,12 +20,15 @@ context: |
   (SQLite in the reference implementation) rather than fetched live.
 
   Non-negotiable constraint carried over from the reference app: the app is
-  offline-first by design. Data syncs only because the user explicitly
-  triggers it (e.g. a button press). Do not propose scheduled/cron syncing,
-  background timers, startup auto-sync, live streaming quotes, websockets, or
-  any network call triggered merely by loading/viewing a chart. If a feature
-  seems to need fresher data, the answer is a sync prompt, not an implicit
-  fetch.
+  offline-first by design. Data syncs only because the user asked for it —
+  either a sync control pressed, or a periodic refresh the user switches on for
+  the current session, which starts off on every load and is never restored
+  automatically. Do not propose scheduled/cron syncing, a refresh that runs
+  without the user switching it on, startup auto-sync, resuming a previously
+  enabled refresh on a later load, live streaming quotes, websockets, or any
+  network call triggered merely by loading/viewing a chart. If a feature seems
+  to need fresher data, the answer is a control the user operates, not an
+  implicit fetch.
 
   Conceptual responsibilities worth preserving (not file names — this is a
   fresh design): fetching market data, persisting/querying it, deriving
