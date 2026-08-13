@@ -17,6 +17,7 @@
  */
 
 import { mt5Ema, mt5Stochastic } from "./mt5math.js";
+import { ZONE_PALETTE } from "./palette.js";
 import { registerIndicator } from "./registry.js";
 
 /* Every tunable in one place; mirrors the MQL5 inputs and their defaults
@@ -37,7 +38,10 @@ export const FVG_PARAMS = {
   stochSlowing: 9,
 };
 
-export const FVG_COLORS = { bullish: "#1e90ff", bearish: "#ef5350" };
+export const FVG_COLORS = {
+  bullish: ZONE_PALETTE.demand,
+  bearish: ZONE_PALETTE.supply,
+};
 
 /* Which pattern directions the EMA 13/89/377 regime allows at bar3.
  * A literal transcription of the original branch ladder; the branches are

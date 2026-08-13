@@ -17,6 +17,7 @@ import {
   IMPULSE,
   OB_STRUCTURE_SOURCE,
 } from "./ob-structure.js";
+import { ZONE_PALETTE } from "./palette.js";
 import { registerIndicator } from "./registry.js";
 
 /* MT5 defaults. Dropped vs source: lookback cap (full-history scan), display/trend
@@ -52,7 +53,7 @@ export const OB_PARAMS = {
   validityScanCap: 500,
 };
 
-export const OB_COLORS = { demand: "#90EE90", supply: "#FFB6C1" };
+export const OB_COLORS = ZONE_PALETTE;
 
 function barIndexByTime(times, t) {
   return times.indexOf(t);
@@ -367,6 +368,7 @@ registerIndicator({
         priceLow: zone.price_low,
         priceHigh: zone.price_high,
         color,
+        style: "fill",
       });
       drawables.push({
         type: "label",

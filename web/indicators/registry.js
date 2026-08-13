@@ -7,7 +7,8 @@
  * the dev-time Node test harness can import indicator modules directly.
  *
  * Drawable shapes:
- *   { type: "rect",  timeFrom, timeTo, priceLow, priceHigh, color }
+ *   { type: "rect",  timeFrom, timeTo, priceLow, priceHigh, color,
+ *     style?: "stroke" | "fill", lineWidth?: number }  // stroke default, lineWidth 1
  *   { type: "label", time, price, text, color, baseline: "top" | "bottom" }
  */
 
@@ -98,8 +99,17 @@ export class IndicatorPrimitive {
     const y1 = this._series.priceToCoordinate(rect.priceHigh);
     const y2 = this._series.priceToCoordinate(rect.priceLow);
     if (x1 === null || x2 === null || y1 === null || y2 === null) return;
+    const style = rect.style ?? "stroke";
+    if (style === "fill") {
+      ctx.fillStyle = rect.color;
+      const prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+      ctx.globalAlpha = prevAlpha;
+      return;
+    }
     ctx.strokeStyle = rect.color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = rect.lineWidth ?? 1;
     ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
   }
 

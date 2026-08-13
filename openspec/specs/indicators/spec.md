@@ -102,6 +102,22 @@ The space is a property of the bar series, not of any pattern: it SHALL be deter
 - **WHEN** a bar whose close equals its open is followed by a bullish bar opening above it
 - **THEN** the pair is treated as bullish and the space is recorded
 
+### Requirement: Shared directional zone palette
+
+Zone-drawing indicators SHALL colour their output from one shared directional palette rather than per-indicator colours, so that a bullish/demand zone reads the same whichever indicator produced it and a bearish/supply zone likewise. The palette SHALL define exactly two colours — one for the bullish/demand direction, one for the bearish/supply direction — and SHALL be the Order Block indicator's existing pair (a light green for demand, a light pink for supply), so OB's appearance is unchanged by the unification and FVG adopts those colours.
+
+Because colour no longer distinguishes one indicator from another, each zone-drawing indicator SHALL be distinguishable by the way its rectangle is painted, and every zone SHALL keep a text label naming its indicator.
+
+#### Scenario: Both indicators enabled use one palette
+
+- **WHEN** the user enables both the FVG and OB indicators on the same chart
+- **THEN** every bullish FVG zone and every demand OB zone are drawn in the same colour, every bearish FVG zone and every supply OB zone are drawn in the same colour, and the two indicators remain distinguishable by how their rectangles are painted and by their labels
+
+#### Scenario: OB colours unchanged by the unification
+
+- **WHEN** the OB indicator is rendered after the palette is shared
+- **THEN** its demand and supply zones use the same two colours they used before, since the shared palette adopts OB's pair
+
 ### Requirement: FVG indicator
 
 The first registered indicator SHALL be a Fair Value Gap scanner over three consecutive closed bars (bar1, bar2, bar3 in chronological order, bar3 newest), reproducing the original MQL5 indicator's rules with its default parameters, all of which SHALL be defined in one place. Two deliberate deviations: the original's recent-bars scan cap (`bar_limit`, 120) is dropped — the scan SHALL cover every displayed bar from the slow EMA warm-up boundary through the second-newest displayed bar, and all detected zones SHALL be drawn at once — and the rules that measure a bar's displacement SHALL read space-extended values, as noted below. The pattern rules:
@@ -114,7 +130,7 @@ The first registered indicator SHALL be a Fair Value Gap scanner over three cons
 - a stochastic filter (%K 21, slowing 9) SHALL reject bullish patterns in overbought and bearish patterns in oversold territory;
 - the zone height in instrument points SHALL fall within configured floor and ceiling values, using the catalog's point size.
 
-The gap and the zone SHALL be measured from recorded prices alone: spaces SHALL NOT move either edge of a zone. Detected zones SHALL render as rectangles spanning from bar1's time forward a configured number of bars, drawn behind the candles, with a direction-colored label at bar3.
+The gap and the zone SHALL be measured from recorded prices alone: spaces SHALL NOT move either edge of a zone. Detected zones SHALL render as rectangles spanning from bar1's time forward a configured number of bars, drawn behind the candles, with a direction-coloured label at bar3. Both the rectangle and the label SHALL take their colour from the shared directional zone palette: the bullish/demand colour for a bullish zone, the bearish/supply colour for a bearish zone. The rectangle SHALL be painted as an unfilled outline — a stroked border at full colour strength with no interior fill — which is what distinguishes an FVG zone from an Order Block zone now that the two share a palette.
 
 #### Scenario: Bullish FVG detected
 
@@ -140,6 +156,16 @@ The gap and the zone SHALL be measured from recorded prices alone: spaces SHALL 
 
 - **WHEN** bar3 carries a space and the triplet qualifies as a bullish FVG
 - **THEN** the zone still runs from bar1's high to bar3's recorded low, unchanged by that space
+
+#### Scenario: FVG zone takes the shared palette colour
+
+- **WHEN** a bullish FVG zone and a bearish FVG zone are drawn
+- **THEN** the bullish rectangle and label use the palette's demand colour and the bearish ones use the palette's supply colour, not a separate FVG-only colour pair
+
+#### Scenario: FVG rectangle stays an outline
+
+- **WHEN** an FVG zone is rendered
+- **THEN** its rectangle shows a stroked border with no interior fill, so candles inside the zone remain fully visible
 
 ### Requirement: FVG signal parity with the MT5 original
 
@@ -204,7 +230,11 @@ swing-structure requirement), the scan SHALL:
 
 Each surviving Order Block SHALL render as a rectangle spanning its own bar's low to high,
 from that bar's time forward to the end of the zone's validity, drawn behind the candles,
-direction-coloured, with a direction-coloured `OB` label. A zone's validity SHALL end at the
+with a direction-coloured `OB` label. The rectangle and the label SHALL take their colour from
+the shared directional zone palette. The rectangle SHALL be painted as a **filled** area at
+50% opacity of that colour and SHALL have **no border stroke**, which is what distinguishes an
+Order Block zone from an FVG zone's outline; the `OB` label SHALL stay at full colour strength
+so it remains legible over the fill. A zone's validity SHALL end at the
 first close that breaks the swing that produced it — for a demand zone, a close below the
 first pivot's low or above the second pivot's high; for a supply zone, a close above the first
 pivot's high or below the second pivot's low — and zones belonging to the newest swing SHALL
@@ -240,6 +270,18 @@ remain open-ended through the newest bar.
 - **WHEN** a close after the swing breaks either the first pivot's extreme or the second
   pivot's extreme
 - **THEN** the zone's rectangle ends at that bar rather than extending to the newest bar
+
+#### Scenario: OB rectangle is a borderless 50% fill
+
+- **WHEN** an Order Block zone is rendered
+- **THEN** its rectangle is filled with its directional colour at 50% opacity and shows no
+  border stroke, while the candles beneath it stay visible through the fill
+
+#### Scenario: OB label stays readable over the fill
+
+- **WHEN** an Order Block zone's `OB` label is drawn over the zone's fill
+- **THEN** the label uses the full-strength directional colour rather than the 50%-opacity fill
+  colour
 
 ### Requirement: OB rests on internal-only swing structure
 
