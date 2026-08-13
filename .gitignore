@@ -17,5 +17,9 @@ data/.yf-cache/
 # Static export
 dist/
 
+# MQL5 build output (the .mq5 sources are tracked; rebuild via MetaEditor)
+*.ex5
+*.compile.log
+
 # Editor / OS
 .DS_Store

@@ -61,3 +61,22 @@ context: |
 #     archive:
 #       guidance:
 #         - Summarize the archive outcome before finishing
+
+operations:
+  archive:
+    guidance:
+      - |
+        One change is one commit. After the archive has moved the change and
+        synced its specs, offer a single commit covering the whole change: the
+        code it produced, its own artifacts under changes/archive/, and the
+        synced main specs. Archiving without committing leaves a detailed
+        tasks.md with no commit to point at, so the record says what was
+        intended while git can no longer say what was done.
+      - |
+        Draft the commit message from the change name and its proposal's
+        intent. Commit only that change's work — if unrelated edits are sitting
+        in the tree, stage by hunk rather than sweeping them in.
+      - |
+        Never commit build output produced during the change, such as compiled
+        MQL5 .ex5 files or MetaEditor compile logs. These are gitignored; if a
+        new kind appears, extend .gitignore instead of committing it.
