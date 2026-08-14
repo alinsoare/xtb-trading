@@ -267,6 +267,21 @@ git cat-file blob FETCH_HEAD:market.db > data/market.db
 
 ## Adding a symbol
 
+Account statements exported from XTB live in `data/xtb-reports/` (one or more
+`*.xlsx` files). To see which instruments they name that the catalog does not
+yet cover, run:
+
+```bash
+uv run python tools/import_xtb_report_symbols.py
+```
+
+The tool scans every sheet of every report, deduplicates tickers, and prints
+proposed CSV rows for anything missing from `data/symbols.csv`. It **never
+writes the catalog** — completing and committing rows is manual work. The
+report's Instrument column is a short display label, not the verbatim xStation
+name: copy `xtb_name` from xStation when filling in a row, because CFD
+detection reads that field.
+
 Add a row to `data/symbols.csv` and verify the ticker against Yahoo before
 enabling it — XTB and Yahoo symbols differ in exchange suffix (`.UK` → `.L`,
 `.FR` → `.PA`, `IDR.ES` → `IDR.MC`) and sometimes in ticker root (`TSLA.DE`

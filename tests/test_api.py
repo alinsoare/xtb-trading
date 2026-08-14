@@ -63,7 +63,12 @@ class TestCatalog:
     def test_lists_seed_instruments_with_flags(self, client):
         payload = client.get("/data/catalog.json").json()
         by_symbol = {s["xtb_symbol"]: s for s in payload["symbols"]}
+        assert len(payload["symbols"]) == 46
         assert "ABEA.DE" in by_symbol
+        for symbol in ("3USL.UK", "COPX.UK", "V.US"):
+            entry = by_symbol[symbol]
+            assert any(r.startswith("not EUR") for r in entry["incompatibility"])
+            assert "CFD" not in entry["incompatibility"]
 
         aapl = by_symbol["AAPL.US"]  # enabled USD CFD in the seed catalog
         assert not aapl["compatible"]

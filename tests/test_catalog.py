@@ -122,5 +122,21 @@ class TestLoading:
     def test_seed_catalog_is_valid(self):
         # The checked-in catalog must always load.
         instruments = load_catalog()
-        assert instruments, "seed catalog is empty"
+        assert len(instruments) == 46
         assert any(i.enabled for i in instruments)
+        assert sum(1 for i in instruments if i.enabled) == 44
+        disabled = [i for i in instruments if not i.enabled]
+        assert {i.xtb_symbol for i in disabled} == {"GLD.US", "OOEA.DE"}
+
+    def test_non_eur_real_stocks_are_flagged_without_cfd(self):
+        instruments = by_xtb_symbol(load_catalog())
+        for symbol in ("3USL.UK", "COPX.UK", "V.US"):
+            inst = instruments[symbol]
+            assert not inst.is_cfd
+            reasons = inst.incompatibility_reasons()
+            assert any(r.startswith("not EUR") for r in reasons)
+            assert "CFD" not in reasons
+
+    def test_three_decimal_point_size(self):
+        a1p0 = by_xtb_symbol(load_catalog())["A1P0.DE"]
+        assert a1p0.point_size == 0.001
