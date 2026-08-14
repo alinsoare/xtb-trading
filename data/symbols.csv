@@ -45,3 +45,21 @@ SXR2.DE,iShares MSCI Canada UCITS ETF,SXR2.DE,iShares VII PLC - iShares MSCI Can
 V.US,Visa Inc.,V,Visa Inc.,STOCK,REAL,NYSE,USD,0.01,1,true
 V9N.DE,Global X Data Center REITs & Digital Infrastructure UCITS ETF,V9N.DE,Global X Data Center REITS & Digital Infrastructure UCITS ETF USD Acc,ETF,REAL,XETRA,EUR,0.001,1,true
 WTEH.DE,WisdomTree Enhanced Commodity UCITS ETF,WTEH.DE,WisdomTree Enhanced Commodity UCITS ETF - EUR Hedged Acc,ETF,REAL,XETRA,EUR,0.001,1,true
+SX7PEX.DE,"iShares STOXX ope 600 Banks UCITS DE (Dist, EUR)",EXV1.DE,iShares STOXX Europe 600 Banks UCITS ETF (DE),ETF,REAL,XETRA,EUR,0.01,1,true
+SXEPEX.DE,iShares STOXX Europe 600 Oil & Gas UCITS ETF DE (Dist EUR),EXH1.DE,iShares STOXX Europe 600 Oil & Gas UCITS ETF (DE),ETF,REAL,XETRA,EUR,0.01,1,true
+SX6PEX.DE,iShares STOXX Europe 600 Utilities UCITS ETF DE (Dist EUR),EXH9.DE,iShares STOXX Europe 600 Utilities UCITS ETF (DE),ETF,REAL,XETRA,EUR,0.01,1,true
+QDVI.DE,iShares Edge MSCI USA Value Factor UCITS ETF (Acc EUR),QDVI.DE,iShares Edge MSCI USA Value Factor UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.001,1,true
+QDVF.DE,iShares S&P 500 Energy Sector UCITS (Acc EUR),QDVF.DE,iShares S&P 500 Energy Sector UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.001,1,true
+SXRS.DE,"iShares Diversified Commodity Swap UCITS ETF USD A (Acc, EUR)",SXRS.DE,iShares Diversified Commodity Swap UCITS ETF,ETF,REAL,XETRA,EUR,0.001,1,true
+SXRY.DE,"iShares FTSE MIB UCITS ETF (Acc, EUR)",SXRY.DE,iShares VII PLC - iShares FTSE MIB ETF EUR Acc,ETF,REAL,XETRA,EUR,0.1,1,true
+CEMS.DE,iShares Edge MSCI Europe Value Factor UCITS ETF (Acc EUR),CEMS.DE,iShares Edge MSCI Europe Value Factor UCITS ETF EUR (Acc),ETF,REAL,XETRA,EUR,0.001,1,true
+ZPRU.DE,"SPDR MSCI USA Value UCITS (Acc, EUR)",ZPRU.DE,State Street SPDR MSCI USA Value UCITS ETF USD Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+ZPRV.DE,"SPDR MSCI USA Small Cap Value Weighted UCITS (Acc, EUR)",ZPRV.DE,State Street SPDR MSCI USA Small Cap Value Weighted UCITS ETF USD Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+STZ.FR,SPDR MSCI Europe Financials UCITS ETF (Acc EUR),STZ.PA,State Street SPDR MSCI Europe Financials UCITS ETF,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+BNK.FR,Amundi Stoxx European 600 Banks ETF (Acc EUR),BNK.PA,Multi Units Luxembourg - Amundi STOXX Europe 600 Banks UCITS ETF Acc,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+PANX.FR,"Amundi PEA Nasdaq 100 UCITS C/D (Acc, EUR)",PANX.PA,Amundi PEA US Tech Screened UCITS ETF - Acc,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+C50.FR,Amundi Euro Stoxx 50 UCITS ETF (Acc EUR),C50.PA,Amundi Core EURO STOXX 50 UCITS ETF EUR Acc,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+XB4A.DE,"Xtrackers ATX UCITS ETF 1C (Acc, EUR)",XB4A.DE,Xtrackers ATX UCITS ETF 1C,ETF,REAL,XETRA,EUR,0.01,1,true
+XESP.DE,"Xtrackers Spain UCITS ETF (Acc, EUR)",XESP.DE,Xtrackers Spain UCITS ETF 1C,ETF,REAL,XETRA,EUR,0.01,1,true
+FLXK.DE,"Franklin FTSE Korea UCITS (Acc, EUR)",FLXK.DE,Franklin FTSE Korea UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+VVSM.DE,"VanEck Vectors Semiconductor UCITS (Acc, EUR)",VVSM.DE,VanEck Semiconductor UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true

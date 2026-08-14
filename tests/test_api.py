@@ -66,7 +66,7 @@ class TestCatalog:
     def test_lists_seed_instruments_with_flags(self, client):
         payload = client.get("/data/catalog.json").json()
         by_symbol = {s["xtb_symbol"]: s for s in payload["symbols"]}
-        assert len(payload["symbols"]) == 46
+        assert len(payload["symbols"]) == 64
         assert "ABEA.DE" in by_symbol
         for symbol in ("3USL.UK", "COPX.UK", "V.US"):
             entry = by_symbol[symbol]
