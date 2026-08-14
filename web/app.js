@@ -449,23 +449,26 @@ function renderScreenerRow(symbol) {
   const result = state.screenerScores[symbol.xtb_symbol];
   if (!result) return "";
 
+  let marks = "";
+  let detail = "";
   if (result.status === "not-screened") {
-    return `<div class="screener-state">not screened</div>`;
-  }
-  if (result.status === "insufficient-history") {
-    return `<div class="screener-state">insufficient history</div>`;
+    detail = `<div class="screener-state">not screened</div>`;
+  } else if (result.status === "insufficient-history") {
+    detail = `<div class="screener-state">insufficient history</div>`;
+  } else {
+    marks = renderMarks(result.marks, result.reasons);
+    const range = formatPct(result.rangePct);
+    const position = formatPct(result.positionPct);
+    detail = `<div class="screener-figures">30d range ${range} · position ${position}</div>`;
   }
 
-  const marks = renderMarks(result.marks, result.reasons);
-  const range = formatPct(result.rangePct);
-  const position = formatPct(result.positionPct);
   return `
     <div class="symbol-top">
       <span class="symbol-code">${escapeHtml(symbol.xtb_symbol)}${marks}</span>
       <span class="symbol-class">${escapeHtml(symbol.asset_class)}</span>
     </div>
     <div class="symbol-name" title="${escapeHtml(symbol.name)}">${escapeHtml(symbol.name)}</div>
-    <div class="screener-figures">30d range ${range} · position ${position}</div>`;
+    ${detail}`;
 }
 
 function renderList() {

@@ -121,16 +121,14 @@ body { display: flex; }
   border-radius: 50%;
   background: #4ac08a;
 }
-.screener-figures {
+.screener-figures,
+.screener-state {
   font-size: 11px;
   color: var(--muted);
   margin-top: 2px;
 }
 .screener-state {
-  font-size: 11px;
-  color: var(--muted);
   font-style: italic;
-  margin-top: 2px;
 }
 
 /* ---------- Main ---------- */
