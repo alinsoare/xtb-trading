@@ -24,9 +24,10 @@ packages = ["src/xtb_charts"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = ["error::starlette.exceptions.StarletteDeprecationWarning"]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "httpx2>=2.10",
     "pytest>=9.1.1",
 ]
