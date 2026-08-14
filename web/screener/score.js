@@ -12,9 +12,12 @@ import {
 
 export const GATE_MIN_RANGE_PCT = 0.03;
 export const GATE_MIN_PEAK_DISCOUNT = 0.02;
-export const WEIGHT_D1_FVG_H1_RUN = 3;
-export const WEIGHT_H1_FVG_M15_RUN = 2;
+export const WEIGHT_GATE_PASS = 1;
+export const WEIGHT_D1_FVG_H1_RUN = 2;
+export const WEIGHT_H1_FVG_M15_RUN = 1;
 export const WEIGHT_MACD_ASCENDING = 1;
+export const H1_RUN_BARS = 1;
+export const M15_RUN_BARS = 1;
 export const PIVOT_BANDS = [0.02, 0.05, 0.1];
 
 export function scorePivotDistance(distance) {
@@ -26,9 +29,10 @@ export function scorePivotDistance(distance) {
 
 export function markCount(score) {
   if (score <= 0) return 0;
-  if (score <= 3) return 1;
-  if (score <= 6) return 2;
-  return 3;
+  if (score <= 2) return 1;
+  if (score <= 4) return 2;
+  if (score <= 6) return 3;
+  return 4;
 }
 
 function emptyResult(status, rangePct = null, positionPct = null) {
@@ -86,11 +90,11 @@ export function scoreInstrument({
     return emptyResult("screened", rangePct, positionPct);
   }
 
-  const reasons = [];
-  let score = 0;
+  const reasons = [{ rule: "Eligibility gate", points: WEIGHT_GATE_PASS }];
+  let score = WEIGHT_GATE_PASS;
 
   const d1Fvg = signalOverrides.d1Fvg ?? inLiveBullishFvg(bars.d1, pointSize, price);
-  const h1Run = signalOverrides.h1Run ?? bullishRun(bars.h1, 3);
+  const h1Run = signalOverrides.h1Run ?? bullishRun(bars.h1, H1_RUN_BARS);
   if (d1Fvg.insufficient || h1Run.insufficient) {
     return emptyResult("insufficient-history", rangePct, positionPct);
   }
@@ -100,7 +104,7 @@ export function scoreInstrument({
   }
 
   const h1Fvg = signalOverrides.h1Fvg ?? inLiveBullishFvg(bars.h1, pointSize, price);
-  const m15Run = signalOverrides.m15Run ?? bullishRun(bars.m15, 3);
+  const m15Run = signalOverrides.m15Run ?? bullishRun(bars.m15, M15_RUN_BARS);
   if (h1Fvg.insufficient || m15Run.insufficient) {
     return emptyResult("insufficient-history", rangePct, positionPct);
   }

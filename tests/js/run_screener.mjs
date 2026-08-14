@@ -12,9 +12,15 @@ import { bullishRun, macdAscending } from "../../web/screener/signals.js";
 import {
   GATE_MIN_PEAK_DISCOUNT,
   GATE_MIN_RANGE_PCT,
+  H1_RUN_BARS,
+  M15_RUN_BARS,
   markCount,
   scoreInstrument,
   scorePivotDistance,
+  WEIGHT_D1_FVG_H1_RUN,
+  WEIGHT_GATE_PASS,
+  WEIGHT_H1_FVG_M15_RUN,
+  WEIGHT_MACD_ASCENDING,
 } from "../../web/screener/score.js";
 
 let failures = 0;
@@ -97,6 +103,34 @@ const brokenRun = [
 ];
 check("bearish bar breaks run", bullishRun(brokenRun, 3).ok, false);
 
+const oneBarRun = [
+  bar(1, 9, 10, 8, 9.2),
+  bar(2, 10, 11, 9, 9.2),
+  bar(3, 11, 12, 10, 9.2),
+  bar(4, 12, 13, 11, 12.5),
+  bar(5, 13, 14, 12, 13.5),
+];
+check("one-bar run succeeds on last bullish bar", bullishRun(oneBarRun, 1).ok, true);
+
+const oneBarFail = [
+  bar(1, 9, 10, 8, 9.5),
+  bar(2, 10, 11, 9, 10.5),
+  bar(3, 11, 12, 10, 11.5),
+  bar(4, 12, 13, 11, 9.2),
+  bar(5, 13, 14, 12, 13.5),
+];
+check("one-bar run fails when last completed bar is bearish", bullishRun(oneBarFail, 1).ok, false);
+
+const dojiThenBullish = [
+  bar(1, 9, 10, 8, 9.5),
+  bar(2, 10, 11, 9, 10.5),
+  bar(3, 11, 12, 10, 11.5),
+  bar(4, 12, 13, 11, 12.5),
+  bar(5, 13, 14, 12, 13.01),
+  bar(6, 14, 15, 13, 14.5),
+];
+check("one-bar run skips doji and counts prior bullish bar", bullishRun(dojiThenBullish, 1).ok, true);
+
 const longDojiStretch = [];
 for (let i = 0; i < SEQUENCE_SCAN_CAP + 5; i++) {
   longDojiStretch.push(bar(i, 10, 11, 9, 10.01));
@@ -153,10 +187,15 @@ check("zero-range window yields null positionPct", zeroRange.positionPct, null);
 
 /* ---------- score composition ---------- */
 
-check("mark buckets", markCount(3), 1);
+check("mark buckets at 0", markCount(0), 0);
+check("mark buckets at 1", markCount(1), 1);
+check("mark buckets at 2", markCount(2), 1);
+check("mark buckets at 3", markCount(3), 2);
 check("mark bucket at 4", markCount(4), 2);
-check("mark bucket at 6", markCount(6), 2);
-check("mark bucket at 7", markCount(7), 3);
+check("mark bucket at 5", markCount(5), 3);
+check("mark bucket at 6", markCount(6), 3);
+check("mark bucket at 7", markCount(7), 4);
+check("mark bucket at 8", markCount(8), 4);
 
 function tuneWindowTail(d1Bars, { high, low, close }) {
   for (let i = d1Bars.length - 31; i < d1Bars.length - 1; i++) {
@@ -187,6 +226,7 @@ const gatedOut = scoreInstrument({
   },
 });
 check("gated-out instrument scores nothing", gatedOut.score, 0);
+check("gated-out has no reasons", gatedOut.reasons.length, 0);
 check("gated-out keeps range figures", gatedOut.rangePct != null, true);
 check("gated-out keeps position figures", gatedOut.positionPct != null, true);
 check(
@@ -220,11 +260,12 @@ const fullConfluence = scoreInstrument({
     pivot: { pivotDistance: 0.11, insufficient: false },
   },
 });
-check("full confluence score", fullConfluence.score, 9);
-check("full confluence marks", fullConfluence.marks, 3);
+check("full confluence score", fullConfluence.score, 8);
+check("full confluence marks", fullConfluence.marks, 4);
 checkDeep("full confluence reasons", fullConfluence.reasons, [
-  { rule: "D1 FVG + H1 bullish run", points: 3 },
-  { rule: "H1 FVG + M15 bullish run", points: 2 },
+  { rule: "Eligibility gate", points: 1 },
+  { rule: "D1 FVG + H1 bullish run", points: 2 },
+  { rule: "H1 FVG + M15 bullish run", points: 1 },
   { rule: "D1 MACD ascending", points: 1 },
   { rule: "D1 pivot distance", points: 3 },
 ]);
@@ -258,6 +299,29 @@ check(
   true,
 );
 
+const gateOnly = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: {
+    d1: gateOpenD1,
+    h1: makeBars(400, 1_700_000_000, 3600, 100),
+    m15: makeBars(400, 1_700_000_000, 900, 100),
+  },
+  signalOverrides: {
+    d1Fvg: { ok: false, insufficient: false },
+    h1Run: { ok: false, insufficient: false },
+    h1Fvg: { ok: false, insufficient: false },
+    m15Run: { ok: false, insufficient: false },
+    macd: { ok: false, insufficient: false },
+    pivot: { pivotDistance: null, insufficient: false },
+  },
+});
+check("gate-only instrument scores 1", gateOnly.score, 1);
+check("gate-only instrument carries one mark", gateOnly.marks, 1);
+checkDeep("gate-only reasons list only the eligibility gate", gateOnly.reasons, [
+  { rule: "Eligibility gate", points: 1 },
+]);
+
 const boundaryD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
   high: 100,
   low: 85,
@@ -273,6 +337,7 @@ const boundaryGated = scoreInstrument({
   },
 });
 check("discount boundary gates out", boundaryGated.score, 0);
+check("discount boundary has no reasons", boundaryGated.reasons.length, 0);
 check(
   "discount boundary price is exactly high * 0.98",
   boundaryD1[boundaryD1.length - 1].close,
@@ -294,6 +359,7 @@ const narrowRangeGated = scoreInstrument({
   },
 });
 check("narrow range gates out below peak", narrowRangeGated.score, 0);
+check("narrow range has no reasons", narrowRangeGated.reasons.length, 0);
 check(
   "narrow range is under 3%",
   narrowRangeGated.rangePct != null && narrowRangeGated.rangePct < GATE_MIN_RANGE_PCT,
@@ -318,6 +384,17 @@ checkDeep(
 
 check("gate min range constant", GATE_MIN_RANGE_PCT, 0.03);
 check("gate min peak discount constant", GATE_MIN_PEAK_DISCOUNT, 0.02);
+check("weight gate pass constant", WEIGHT_GATE_PASS, 1);
+check("weight D1 FVG + H1 run constant", WEIGHT_D1_FVG_H1_RUN, 2);
+check("weight H1 FVG + M15 run constant", WEIGHT_H1_FVG_M15_RUN, 1);
+check("weight MACD ascending constant", WEIGHT_MACD_ASCENDING, 1);
+check("H1 run bars constant", H1_RUN_BARS, 1);
+check("M15 run bars constant", M15_RUN_BARS, 1);
+check(
+  "weights plus top pivot band sum to 8",
+  WEIGHT_GATE_PASS + WEIGHT_D1_FVG_H1_RUN + WEIGHT_H1_FVG_M15_RUN + WEIGHT_MACD_ASCENDING + 3,
+  8,
+);
 
 if (failures) {
   console.error(`${failures} failure(s)`);
