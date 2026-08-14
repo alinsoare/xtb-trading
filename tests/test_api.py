@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
 from xtb_charts import api, store
 from xtb_charts.config import TIMEFRAME_ORDER, TIMEFRAMES
+from xtb_charts.contract import SCAN_BAR_CAP, SCAN_TIMEFRAMES
 from xtb_charts.store import Bar
 
 
@@ -91,6 +94,43 @@ class TestCatalog:
         assert entry["timeframes"]["d1"]["status"] == "ok"
         assert entry["total_bars"] == 7
         assert entry["last_sync_utc"] == "2026-08-12T10:00:00+00:00"
+
+
+class TestScanBars:
+    def test_shape_and_cap(self, client):
+        seed("ABEA.DE", "d1", SCAN_BAR_CAP + 50)
+        seed("ABEA.DE", "h1", 90)
+        seed("ABEA.DE", "m15", SCAN_BAR_CAP)
+        seed("GLD.US", "d1", 10)  # disabled in seed catalog
+
+        payload = client.get("/data/scan-bars.json").json()
+        assert "symbols" in payload
+        assert "ABEA.DE" in payload["symbols"]
+        assert "GLD.US" not in payload["symbols"]
+
+        abea = payload["symbols"]["ABEA.DE"]
+        assert set(abea) == set(SCAN_TIMEFRAMES)
+        for tf_key in SCAN_TIMEFRAMES:
+            series = abea[tf_key]
+            assert set(series) == {"t", "o", "h", "l", "c"}
+
+        assert len(abea["d1"]["t"]) == SCAN_BAR_CAP
+        assert len(abea["h1"]["t"]) == 90
+        assert len(abea["m15"]["t"]) == SCAN_BAR_CAP
+        assert abea["d1"]["t"] == sorted(abea["d1"]["t"])
+        assert abea["d1"]["t"][0] == 1_700_000_000 + 50 * 3600
+
+    def test_export_matches_dev(self, client, tmp_path):
+        from xtb_charts.export import export_site
+
+        seed("ABEA.DE", "d1", 12)
+        out = tmp_path / "dist"
+        export_site(out)
+        dev = client.get("/data/scan-bars.json").json()
+        exported = json.loads((out / "data" / "scan-bars.json").read_text())
+        dev.pop("generated_utc")
+        exported.pop("generated_utc")
+        assert exported == dev
 
 
 class TestCandles:

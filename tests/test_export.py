@@ -58,6 +58,13 @@ def test_export_round_trip(client, tmp_path):
     exported_catalog.pop("generated_utc"), dev_catalog.pop("generated_utc")
     assert exported_catalog == dev_catalog
 
+    # scan-bars.json: identical modulo generation time.
+    exported_scan = json.loads((out / "data" / "scan-bars.json").read_text())
+    dev_scan = client.get("/data/scan-bars.json").json()
+    exported_scan.pop("generated_utc")
+    dev_scan.pop("generated_utc")
+    assert exported_scan == dev_scan
+
     # Candle files exist for every symbol and timeframe, byte-identical in shape.
     symbols = [s["xtb_symbol"] for s in exported_catalog["symbols"]]
     for symbol in symbols:

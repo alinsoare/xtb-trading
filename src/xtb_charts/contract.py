@@ -18,6 +18,9 @@ from . import store
 from .catalog import Instrument
 from .config import BASE_CURRENCY, TIMEFRAME_ORDER, TIMEFRAMES
 
+SCAN_BAR_CAP = 420
+SCAN_TIMEFRAMES = ("m15", "h1", "d1")
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
@@ -81,6 +84,32 @@ def build_catalog(conn: sqlite3.Connection, instruments: list[Instrument]) -> di
             }
         )
     return {"generated_utc": _now_iso(), "symbols": payload}
+
+
+def build_scan_bars(conn: sqlite3.Connection, instruments: list[Instrument]) -> dict:
+    """``data/scan-bars.json``: recent M15/H1/D1 bars for enabled instruments.
+
+    Columnar, volume-free, capped at ``SCAN_BAR_CAP`` bars per timeframe (most
+    recent, oldest first). Shorter series are served whole.
+    """
+    symbols: dict[str, dict] = {}
+    for instrument in instruments:
+        if not instrument.enabled:
+            continue
+        per_tf: dict[str, dict] = {}
+        for tf_key in SCAN_TIMEFRAMES:
+            bars = store.get_bars(conn, instrument.xtb_symbol, tf_key)
+            if len(bars) > SCAN_BAR_CAP:
+                bars = bars[-SCAN_BAR_CAP:]
+            per_tf[tf_key] = {
+                "t": [b.ts for b in bars],
+                "o": [b.open for b in bars],
+                "h": [b.high for b in bars],
+                "l": [b.low for b in bars],
+                "c": [b.close for b in bars],
+            }
+        symbols[instrument.xtb_symbol] = per_tf
+    return {"generated_utc": _now_iso(), "symbols": symbols}
 
 
 def build_candles(conn: sqlite3.Connection, symbol: str, tf_key: str) -> dict:

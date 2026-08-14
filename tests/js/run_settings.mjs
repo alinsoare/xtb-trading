@@ -112,6 +112,7 @@ const settings = {
   search: "nvid",
   assetClass: "STOCK",
   compatibleOnly: true,
+  sortOrder: "default",
 };
 
 const storage = stubStorage();
@@ -171,6 +172,7 @@ checkDeep("unregistered indicators are dropped", salvaged.indicators, ["fvg"]);
 check("a non-string search falls back", salvaged.search, "");
 check("a null asset class falls back", salvaged.assetClass, "");
 check("a non-boolean flag falls back", salvaged.compatibleOnly, false);
+check("an unknown sort order falls back", salvaged.sortOrder, "default");
 
 // The point of per-field fallback: one bad value must not cost the others.
 const partial = restoreSettings(

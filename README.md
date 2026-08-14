@@ -31,6 +31,7 @@ node tests/js/run_mt5math.mjs    # MT5 EMA helpers (dev-time only)
 node tests/js/run_measure.mjs    # ruler measurement math (dev-time only)
 node tests/js/run_settings.mjs   # persisted settings + display limit (dev-time only)
 node tests/js/run_scroll_lock.mjs # chart-tool drag-pan suppression + undo (dev-time only)
+node tests/js/run_screener.mjs    # accumulation screener rules (dev-time only)
 ```
 
 ## Two modes, one frontend

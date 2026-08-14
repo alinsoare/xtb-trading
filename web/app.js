@@ -25,6 +25,7 @@ import {
   restoreSettings,
   writeSettings,
 } from "./settings.js";
+import { runScan } from "./screener/scan.js";
 
 /* An incremental sync, repeated while the user leaves the control on. Long
  * enough that the skip rule leaves only M15 and H1 actually fetching. */
@@ -47,6 +48,9 @@ const state = {
   // Session-only, and deliberately never persisted: restoring it would make the
   // app fetch on load, which is the startup auto-sync the project forbids.
   periodicTimer: null,
+  screenerScores: {},
+  screenerScanning: false,
+  screenerProgress: null,
   // Nothing is persisted until the restore has finished writing state.
   ready: false,
 };
@@ -55,6 +59,7 @@ const el = {
   list: document.getElementById("symbol-list"),
   search: document.getElementById("search"),
   assetFilter: document.getElementById("asset-filter"),
+  sortOrder: document.getElementById("sort-order"),
   compatibleOnly: document.getElementById("compatible-only"),
   summary: document.getElementById("catalog-summary"),
   title: document.getElementById("chart-title"),
@@ -402,7 +407,7 @@ function visibleSymbols() {
   const assetClass = el.assetFilter.value;
   const compatibleOnly = el.compatibleOnly.checked;
 
-  return state.symbols.filter((s) => {
+  const items = state.symbols.filter((s) => {
     if (compatibleOnly && !s.compatible) return false;
     if (assetClass && s.asset_class !== assetClass) return false;
     if (!query) return true;
@@ -412,6 +417,55 @@ function visibleSymbols() {
       (s.xtb_name || "").toLowerCase().includes(query)
     );
   });
+
+  if (el.sortOrder.value !== "score") return items;
+
+  return items
+    .map((symbol, index) => ({ symbol, index }))
+    .sort((a, b) => {
+      const scoreA = state.screenerScores[a.symbol.xtb_symbol]?.score ?? 0;
+      const scoreB = state.screenerScores[b.symbol.xtb_symbol]?.score ?? 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.symbol);
+}
+
+function formatPct(value) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function renderMarks(marks, reasons) {
+  if (!marks) return "";
+  const title = reasons?.length
+    ? reasons.map((r) => `${r.rule}: ${r.points}`).join("\n")
+    : "";
+  const dots = Array.from({ length: marks }, () => '<span class="screener-mark"></span>').join("");
+  return `<span class="screener-marks" title="${escapeHtml(title)}">${dots}</span>`;
+}
+
+function renderScreenerRow(symbol) {
+  const result = state.screenerScores[symbol.xtb_symbol];
+  if (!result) return "";
+
+  if (result.status === "not-screened") {
+    return `<div class="screener-state">not screened</div>`;
+  }
+  if (result.status === "insufficient-history") {
+    return `<div class="screener-state">insufficient history</div>`;
+  }
+
+  const marks = renderMarks(result.marks, result.reasons);
+  const range = formatPct(result.rangePct);
+  const position = formatPct(result.positionPct);
+  return `
+    <div class="symbol-top">
+      <span class="symbol-code">${escapeHtml(symbol.xtb_symbol)}${marks}</span>
+      <span class="symbol-class">${escapeHtml(symbol.asset_class)}</span>
+    </div>
+    <div class="symbol-name" title="${escapeHtml(symbol.name)}">${escapeHtml(symbol.name)}</div>
+    <div class="screener-figures">30d range ${range} · position ${position}</div>`;
 }
 
 function renderList() {
@@ -432,7 +486,15 @@ function renderList() {
       ? `${symbol.total_bars.toLocaleString()} bars · ${relativeTime(symbol.last_sync_utc)}`
       : "never synced";
 
-    li.innerHTML = `
+    const screener = renderScreenerRow(symbol);
+    if (screener) {
+      li.innerHTML = `${screener}
+      <div class="symbol-meta">
+        <span class="badge ok">${synced}</span>
+        ${badges}
+      </div>`;
+    } else {
+      li.innerHTML = `
       <div class="symbol-top">
         <span class="symbol-code">${escapeHtml(symbol.xtb_symbol)}</span>
         <span class="symbol-class">${escapeHtml(symbol.asset_class)}</span>
@@ -442,6 +504,7 @@ function renderList() {
         <span class="badge ok">${synced}</span>
         ${badges}
       </div>`;
+    }
     li.addEventListener("click", () => select(symbol.xtb_symbol));
     el.list.appendChild(li);
   }
@@ -451,9 +514,14 @@ function renderSummary() {
   const total = state.symbols.length;
   const flagged = state.symbols.filter((s) => !s.compatible).length;
   const bars = state.symbols.reduce((sum, s) => sum + s.total_bars, 0);
-  el.summary.textContent =
+  let text =
     `${total} instruments · ${bars.toLocaleString()} bars` +
     (flagged ? ` · ${flagged} flagged` : "");
+  if (state.screenerScanning && state.screenerProgress) {
+    const { done, total: scanTotal } = state.screenerProgress;
+    text += ` · screening ${done}/${scanTotal}`;
+  }
+  el.summary.textContent = text;
 }
 
 function renderHeader() {
@@ -653,7 +721,35 @@ function persist() {
     search: el.search.value,
     assetClass: el.assetFilter.value,
     compatibleOnly: el.compatibleOnly.checked,
+    sortOrder: el.sortOrder.value,
   });
+}
+
+async function startScreener() {
+  state.screenerScanning = true;
+  renderSummary();
+  try {
+    await runScan({
+      catalog: { symbols: state.symbols },
+      storage,
+      getJSON,
+      onProgress: ({ done, total }) => {
+        state.screenerProgress = { done, total };
+        renderSummary();
+      },
+      onScore: (symbol, result) => {
+        state.screenerScores[symbol] = result;
+        renderList();
+      },
+    });
+  } catch (error) {
+    reportError(error);
+  } finally {
+    state.screenerScanning = false;
+    state.screenerProgress = null;
+    renderSummary();
+    renderList();
+  }
 }
 
 /* ---------- Boot ---------- */
@@ -665,6 +761,7 @@ function onFilterChange() {
 
 el.search.addEventListener("input", onFilterChange);
 el.assetFilter.addEventListener("change", onFilterChange);
+el.sortOrder.addEventListener("change", onFilterChange);
 el.compatibleOnly.addEventListener("change", onFilterChange);
 el.displayLimit.addEventListener("change", () => changeDisplayLimit(el.displayLimit.value));
 el.syncAll.addEventListener("click", () => startSync(null));
@@ -705,6 +802,7 @@ async function boot() {
   el.displayLimit.value = limitToText(state.displayLimit);
   el.search.value = restored.search;
   el.compatibleOnly.checked = restored.compatibleOnly;
+  el.sortOrder.value = restored.sortOrder;
   // Assigning an asset class the catalog no longer offers leaves the select on
   // "All classes", which is the fallback we want anyway.
   el.assetFilter.value = restored.assetClass;
@@ -719,6 +817,8 @@ async function boot() {
 
   const initial = restored.symbol || state.symbols[0]?.xtb_symbol || null;
   if (initial) select(initial);
+
+  startScreener().catch(reportError);
 }
 
 boot().catch(reportError);

@@ -109,6 +109,30 @@ body { display: flex; }
 .badge.warn { border-color: #5a4a1a; color: var(--warn); }
 .badge.danger { border-color: #6b2a2a; color: var(--down); }
 
+.screener-marks {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  margin-left: 4px;
+}
+.screener-mark {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ac08a;
+}
+.screener-figures {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.screener-state {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
 /* ---------- Main ---------- */
 
 main {

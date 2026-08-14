@@ -20,6 +20,9 @@ export const SETTINGS_VERSION = 1;
 export const SHOW_ALL = "all";
 export const DEFAULT_DISPLAY_LIMIT = 5000;
 
+export const DEFAULT_SORT_ORDER = "default";
+export const VALID_SORT_ORDERS = new Set(["default", "score"]);
+
 export const DEFAULT_SETTINGS = Object.freeze({
   displayLimit: DEFAULT_DISPLAY_LIMIT,
   symbol: null,
@@ -28,6 +31,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   search: "",
   assetClass: "",
   compatibleOnly: false,
+  sortOrder: DEFAULT_SORT_ORDER,
 });
 
 /* ---------- Display limit ---------- */
@@ -138,5 +142,8 @@ export function restoreSettings(stored, live = {}) {
       typeof source.compatibleOnly === "boolean"
         ? source.compatibleOnly
         : DEFAULT_SETTINGS.compatibleOnly,
+    sortOrder: VALID_SORT_ORDERS.has(source.sortOrder)
+      ? source.sortOrder
+      : DEFAULT_SETTINGS.sortOrder,
   };
 }

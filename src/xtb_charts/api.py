@@ -55,6 +55,13 @@ def catalog_payload() -> dict:
         return contract.build_catalog(conn, instruments)
 
 
+@app.get("/data/scan-bars.json")
+def scan_bars() -> dict:
+    instruments = load_catalog()
+    with store.connect() as conn:
+        return contract.build_scan_bars(conn, instruments)
+
+
 @app.get("/data/candles/{symbol}/{timeframe}.json")
 def candles(symbol: str, timeframe: str) -> dict:
     if timeframe not in TIMEFRAMES:

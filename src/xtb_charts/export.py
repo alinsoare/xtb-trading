@@ -34,6 +34,9 @@ def export_site(out_dir: Path) -> int:
         written += _write_json(
             data_dir / "catalog.json", contract.build_catalog(conn, instruments)
         )
+        written += _write_json(
+            data_dir / "scan-bars.json", contract.build_scan_bars(conn, instruments)
+        )
         for instrument in instruments:
             symbol_dir = data_dir / "candles" / instrument.xtb_symbol
             symbol_dir.mkdir(parents=True, exist_ok=True)
