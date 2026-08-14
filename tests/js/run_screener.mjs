@@ -10,7 +10,7 @@ import {
 import { computeRange } from "../../web/screener/range.js";
 import { bullishRun, macdAscending } from "../../web/screener/signals.js";
 import {
-  GATE_MAX_POSITION_PCT,
+  GATE_MIN_PEAK_DISCOUNT,
   GATE_MIN_RANGE_PCT,
   markCount,
   scoreInstrument,
@@ -158,29 +158,48 @@ check("mark bucket at 4", markCount(4), 2);
 check("mark bucket at 6", markCount(6), 2);
 check("mark bucket at 7", markCount(7), 3);
 
+function tuneWindowTail(d1Bars, { high, low, close }) {
+  for (let i = d1Bars.length - 31; i < d1Bars.length - 1; i++) {
+    d1Bars[i] = bar(d1Bars[i].time, low, high, low, close);
+  }
+  d1Bars[d1Bars.length - 1] = bar(
+    d1Bars[d1Bars.length - 1].time,
+    close,
+    high,
+    low,
+    close,
+  );
+  return d1Bars;
+}
+
+const gatedOutD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 100,
+  low: 85,
+  close: 99,
+});
 const gatedOut = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
   seriesByTimeframe: {
-    d1: makeBars(400, 1_700_000_000, 86400, 100),
+    d1: gatedOutD1,
     h1: makeBars(400, 1_700_000_000, 3600, 100),
     m15: makeBars(400, 1_700_000_000, 900, 100),
   },
 });
 check("gated-out instrument scores nothing", gatedOut.score, 0);
 check("gated-out keeps range figures", gatedOut.rangePct != null, true);
-
-const gateOpenD1 = makeBars(400, 1_700_000_000, 86400, 100);
-for (let i = gateOpenD1.length - 31; i < gateOpenD1.length - 1; i++) {
-  gateOpenD1[i] = bar(gateOpenD1[i].time, 101, 110, 100, 101);
-}
-gateOpenD1[gateOpenD1.length - 1] = bar(
-  gateOpenD1[gateOpenD1.length - 1].time,
-  101,
-  103,
-  100,
-  102,
+check("gated-out keeps position figures", gatedOut.positionPct != null, true);
+check(
+  "gated-out is within 2% of the 30-day high",
+  gatedOutD1[gatedOutD1.length - 1].close >= 100 * (1 - GATE_MIN_PEAK_DISCOUNT),
+  true,
 );
+
+const gateOpenD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 110,
+  low: 100,
+  close: 102,
+});
 
 const fullConfluence = scoreInstrument({
   enabled: true,
@@ -210,6 +229,77 @@ checkDeep("full confluence reasons", fullConfluence.reasons, [
   { rule: "D1 pivot distance", points: 3 },
 ]);
 
+const jmlpD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 17), {
+  high: 19.31,
+  low: 17.54,
+  close: 18.21,
+});
+const jmlpStyle = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: {
+    d1: jmlpD1,
+    h1: makeBars(400, 1_700_000_000, 3600, 100),
+    m15: makeBars(400, 1_700_000_000, 900, 100),
+  },
+  signalOverrides: {
+    d1Fvg: { ok: true, insufficient: false },
+    h1Run: { ok: true, insufficient: false },
+    h1Fvg: { ok: false, insufficient: false },
+    m15Run: { ok: false, insufficient: false },
+    macd: { ok: false, insufficient: false },
+    pivot: { pivotDistance: null, insufficient: false },
+  },
+});
+check("JMLP-style pullback is scored", jmlpStyle.score, 3);
+check(
+  "JMLP-style sits high in its range",
+  jmlpStyle.positionPct != null && jmlpStyle.positionPct > 0.33,
+  true,
+);
+
+const boundaryD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 100,
+  low: 85,
+  close: 98,
+});
+const boundaryGated = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: {
+    d1: boundaryD1,
+    h1: makeBars(400, 1_700_000_000, 3600, 100),
+    m15: makeBars(400, 1_700_000_000, 900, 100),
+  },
+});
+check("discount boundary gates out", boundaryGated.score, 0);
+check(
+  "discount boundary price is exactly high * 0.98",
+  boundaryD1[boundaryD1.length - 1].close,
+  100 * (1 - GATE_MIN_PEAK_DISCOUNT),
+);
+
+const narrowRangeD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 100,
+  low: 98.5,
+  close: 95,
+});
+const narrowRangeGated = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: {
+    d1: narrowRangeD1,
+    h1: makeBars(400, 1_700_000_000, 3600, 100),
+    m15: makeBars(400, 1_700_000_000, 900, 100),
+  },
+});
+check("narrow range gates out below peak", narrowRangeGated.score, 0);
+check(
+  "narrow range is under 3%",
+  narrowRangeGated.rangePct != null && narrowRangeGated.rangePct < GATE_MIN_RANGE_PCT,
+  true,
+);
+
 checkDeep(
   "disabled instrument is not screened",
   scoreInstrument({ enabled: false, seriesByTimeframe: {}, pointSize: 0.01 }).status,
@@ -227,7 +317,7 @@ checkDeep(
 );
 
 check("gate min range constant", GATE_MIN_RANGE_PCT, 0.03);
-check("gate max position constant", GATE_MAX_POSITION_PCT, 0.33);
+check("gate min peak discount constant", GATE_MIN_PEAK_DISCOUNT, 0.02);
 
 if (failures) {
   console.error(`${failures} failure(s)`);

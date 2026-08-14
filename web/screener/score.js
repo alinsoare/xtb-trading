@@ -11,7 +11,7 @@ import {
 } from "./signals.js";
 
 export const GATE_MIN_RANGE_PCT = 0.03;
-export const GATE_MAX_POSITION_PCT = 0.33;
+export const GATE_MIN_PEAK_DISCOUNT = 0.02;
 export const WEIGHT_D1_FVG_H1_RUN = 3;
 export const WEIGHT_H1_FVG_M15_RUN = 2;
 export const WEIGHT_MACD_ASCENDING = 1;
@@ -66,7 +66,7 @@ export function scoreInstrument({
 
   const bars = barsFromSeries(seriesByTimeframe);
   const price = currentPrice(bars);
-  const { rangePct, positionPct } = computeRange(bars.d1, price);
+  const { high, rangePct, positionPct } = computeRange(bars.d1, price);
 
   if (
     bars.d1.length < Math.max(FVG_MIN_BARS, MACD_MIN_BARS, PIVOT_MIN_BARS) ||
@@ -78,9 +78,9 @@ export function scoreInstrument({
 
   const gateOpen =
     rangePct != null &&
-    positionPct != null &&
+    high != null &&
     rangePct >= GATE_MIN_RANGE_PCT &&
-    positionPct <= GATE_MAX_POSITION_PCT;
+    price < high * (1 - GATE_MIN_PEAK_DISCOUNT);
 
   if (!gateOpen) {
     return emptyResult("screened", rangePct, positionPct);
