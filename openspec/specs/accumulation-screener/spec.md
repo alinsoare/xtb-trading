@@ -313,6 +313,13 @@ Each recorded reason SHALL carry a short `source` name alongside the rule wordin
 already recorded for it. The names SHALL be distinct from one another and stable across scans. A name
 SHALL NOT restate the points it earned; the points remain part of the on-demand audit on the marks.
 
+A source whose rule turns on a fair value gap SHALL be named by the gap indicator followed by the
+timeframe of the gap itself, and SHALL NOT name the timeframe of the bullish run that confirmed it:
+the D1-gap component is named `FVG D1` and the H1-gap component is named `FVG H1`. The confirming
+run remains part of the rule wording reachable through the on-demand audit on the marks. The
+remaining sources — the eligibility gate, the MACD pattern and the pivot distance — keep their
+existing one-word names.
+
 The source names SHALL be presented uniformly: no name SHALL be sized, coloured or ordered to suggest
 it weighs more than another. An instrument that is gated out, cannot be screened, or scores zero
 SHALL name no source and carry no mark; because passing the gate is worth a point and is recorded as
@@ -320,6 +327,31 @@ a reason, a screened instrument always names at least its eligibility gate and c
 mark.
 
 The graded mark buckets and the "Marks are graded, not ranked" requirement SHALL remain unchanged.
+Renaming a source SHALL NOT change any component's weight, the score an instrument earns, the number
+of marks it carries, the order its reasons are recorded in, or the rule wording shown in the audit.
+
+A result carried over from before a source was renamed SHALL NOT be shown under its old name; such a
+result SHALL be recomputed before it is displayed, without requiring the user to sync.
+
+#### Scenario: Gap sources name the gap's own timeframe
+
+- **WHEN** an instrument passes the gate, has a live D1 gap confirmed by an H1 bullish run, and has a live H1 gap confirmed by an M15 bullish run
+- **THEN** its source line names `FVG D1` and `FVG H1`, neither name mentions the confirming run's timeframe, and the two names remain distinct from one another
+
+#### Scenario: The confirming run stays in the audit
+
+- **WHEN** the user audits the marks on a row that names `FVG H1`
+- **THEN** the rule wording shown states that an H1 gap was confirmed by an M15 bullish run, and the points it contributed are unchanged
+
+#### Scenario: Other sources are untouched
+
+- **WHEN** the eligibility gate, the MACD pattern or the pivot distance is among the fired rules
+- **THEN** each is named exactly as it was before the gap sources were renamed
+
+#### Scenario: A carried-over result is not shown under an old name
+
+- **WHEN** a previously computed result recorded a gap source under its former name and the user opens the list without syncing
+- **THEN** that result is recomputed and its gap sources are named `FVG D1` and `FVG H1`, and no row shows a former name
 
 #### Scenario: Equal scores, different sources
 
@@ -329,7 +361,7 @@ The graded mark buckets and the "Marks are graded, not ranked" requirement SHALL
 #### Scenario: Full confluence names every source
 
 - **WHEN** an instrument passes the gate and all four signal components fire
-- **THEN** it carries four marks and names five sources — the eligibility gate, the D1 gap with H1 run, the H1 gap with M15 run, the MACD pattern and the pivot distance — in the order the reasons were recorded
+- **THEN** it carries four marks and names five sources — the eligibility gate, the D1 gap, the H1 gap, the MACD pattern and the pivot distance — in the order the reasons were recorded
 
 #### Scenario: A gated-in instrument with no signal still names its gate
 

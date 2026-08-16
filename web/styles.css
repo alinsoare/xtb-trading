@@ -124,14 +124,19 @@ body { display: flex; }
 .screener-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
-  margin-top: 2px;
+  gap: 6px 8px;
+  margin-top: 1px;
   font-size: 10px;
   color: var(--muted);
-  line-height: 1.2;
+  line-height: 1.1;
 }
 .screener-source {
   white-space: nowrap;
+  color: #4ac08a;
+  border: 1px solid #4ac08a;
+  background: transparent;
+  border-radius: 3px;
+  padding: 1px 4px;
 }
 .screener-figures,
 .screener-state {

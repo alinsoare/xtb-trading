@@ -434,6 +434,8 @@ check("gate min peak discount constant", GATE_MIN_PEAK_DISCOUNT, 0.02);
 check("weight gate pass constant", WEIGHT_GATE_PASS, 1);
 check("weight D1 FVG + H1 run constant", WEIGHT_D1_FVG_H1_RUN, 2);
 check("weight H1 FVG + M15 run constant", WEIGHT_H1_FVG_M15_RUN, 1);
+check("D1 FVG source label", SOURCE_D1_FVG_H1, "FVG D1");
+check("H1 FVG source label", SOURCE_H1_FVG_M15, "FVG H1");
 check("weight MACD red morning star constant", WEIGHT_MACD_RED_MORNING_STAR, 1);
 check("H1 run bars constant", H1_RUN_BARS, 1);
 check("M15 run bars constant", M15_RUN_BARS, 1);

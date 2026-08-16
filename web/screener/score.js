@@ -20,8 +20,10 @@ export const H1_RUN_BARS = 1;
 export const M15_RUN_BARS = 1;
 export const PIVOT_BANDS = [0.02, 0.05, 0.1];
 export const SOURCE_GATE = "gate";
-export const SOURCE_D1_FVG_H1 = "D1 FVG+H1";
-export const SOURCE_H1_FVG_M15 = "H1 FVG+M15";
+// Label names the gap timeframe only; confirming run stays in rule wording.
+export const SOURCE_D1_FVG_H1 = "FVG D1";
+// Label names the gap timeframe only; confirming run stays in rule wording.
+export const SOURCE_H1_FVG_M15 = "FVG H1";
 export const SOURCE_MACD = "MACD";
 export const SOURCE_PIVOT = "pivot";
 

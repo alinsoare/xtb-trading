@@ -14,6 +14,8 @@ Every entry the filters admit SHALL identify its instrument — its symbol, its 
 
 Each entry SHALL additionally carry its screening result: the marks its score earns inline with its symbol code, the short names of the sources that earned its score on a line beneath those marks, its 30-day range and its position in that range. The range and position figures SHALL be shown for every screened instrument, whether or not it earned a mark, so a list with no marks reads as screened-and-quiet rather than broken. An instrument that could not be screened SHALL say why — not screened, or insufficient history — in place of its figures, and only in place of its figures.
 
+Each source name SHALL read as its own bounded label: green text within a green rectangular outline, unfilled so the row's background shows through. The outline SHALL enclose exactly one source name, so the fired sources are countable without reading the words, and adjacent labels SHALL stay visually separate rather than sharing or touching a border. Every source SHALL receive the same treatment, with no colour, weight or size distinguishing one source from another — the mark count already carries strength. The green SHALL be the green of the marks, so the labels read as belonging to the same signal, and SHALL remain distinguishable from the row's muted range, position and state text.
+
 The marks SHALL be accompanied, on demand, by the rules that fired and the points each contributed, so a mark can be audited from the list itself. The source names are for at-a-glance scanning and SHALL NOT duplicate the per-rule points.
 
 The list SHALL offer sorting by screening score alongside the existing filters. Sorting SHALL apply to whatever the filters admit, and SHALL be stable for instruments sharing a score.
@@ -28,6 +30,21 @@ The list SHALL offer sorting by screening score alongside the existing filters. 
 - **WHEN** an instrument scores 5 in the screener from the eligibility gate, a D1 gap with an H1 run and a pivot 2 points distant
 - **THEN** its row shows three marks inline with its symbol, names those three sources on the line beneath, and shows its 30-day range and its position in that range
 
+#### Scenario: Source names read as green outlined labels
+
+- **WHEN** a screened row names the sources that earned its score
+- **THEN** each name is green text inside its own green rectangular outline with no fill behind it, and the number of outlines can be counted without reading the names
+
+#### Scenario: Every source looks the same
+
+- **WHEN** a row names sources drawn from different rules
+- **THEN** all of its labels carry the identical green outline treatment, with nothing about a label's colour, weight or size implying that its source counted for more
+
+#### Scenario: Labels stay apart when the line wraps
+
+- **WHEN** a row names enough sources that the line wraps
+- **THEN** every label keeps its own complete outline, and no two labels touch or appear to share a border across or within lines
+
 #### Scenario: Rows on the same score read differently
 
 - **WHEN** two instruments both score 4, one from a D1 gap with an H1 run and one from a distant pivot
@@ -36,7 +53,7 @@ The list SHALL offer sorting by screening score alongside the existing filters. 
 #### Scenario: Screened but unmarked
 
 - **WHEN** an instrument is screened and earns no mark
-- **THEN** its row shows no marks, names no source, and still shows its 30-day range and position figures
+- **THEN** its row shows no marks, names no source, shows no empty outline, and still shows its 30-day range and position figures
 
 #### Scenario: Auditing a mark
 
