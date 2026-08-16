@@ -52,19 +52,24 @@ body { display: flex; }
 #search:focus { outline: 1px solid var(--accent); }
 
 .filters {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
   align-items: center;
   margin: 0 14px 8px;
   font-size: 12px;
 }
 .filters select {
-  flex: 1;
+  min-width: 0;
   padding: 5px 6px;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 6px;
+}
+.filters button {
+  font-size: 12px;
+  padding: 5px 8px;
 }
 .check { display: inline-flex; gap: 5px; align-items: center; color: var(--muted); white-space: nowrap; }
 

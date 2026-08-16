@@ -17,11 +17,18 @@
     <input id="search" type="search" placeholder="Search instruments…" autocomplete="off">
     <div class="filters">
       <select id="asset-filter"><option value="">All classes</option></select>
+      <select id="currency-filter"><option value="">All currencies</option></select>
+      <select id="exchange-filter"><option value="">All exchanges</option></select>
       <select id="sort-order" title="Sort order">
         <option value="default">Default order</option>
         <option value="score">Sort by score</option>
+        <option value="symbol">Symbol A–Z</option>
+        <option value="name">Name A–Z</option>
+        <option value="synced">Recently synced</option>
       </select>
       <label class="check"><input type="checkbox" id="compatible-only"> compatible only</label>
+      <label class="check"><input type="checkbox" id="enabled-only"> enabled only</label>
+      <button type="button" id="clear-filters">Clear filters &amp; sort</button>
     </div>
     <ul id="symbol-list"></ul>
   </aside>

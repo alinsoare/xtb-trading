@@ -61,6 +61,9 @@ const LIVE = {
   symbols: ["ABEA.DE", "NVD.DE"],
   timeframes: ["m15", "h1", "d1", "w1"],
   indicatorIds: ["fvg"],
+  assetClasses: ["STOCK"],
+  currencies: ["EUR"],
+  exchanges: ["XETRA"],
 };
 
 /* ---------- parseDisplayLimit ---------- */
@@ -111,7 +114,10 @@ const settings = {
   indicators: ["fvg"],
   search: "nvid",
   assetClass: "STOCK",
+  quoteCurrency: "EUR",
+  exchange: "XETRA",
   compatibleOnly: true,
+  enabledOnly: true,
   sortOrder: "default",
 };
 
@@ -173,6 +179,7 @@ check("a non-string search falls back", salvaged.search, "");
 check("a null asset class falls back", salvaged.assetClass, "");
 check("a non-boolean flag falls back", salvaged.compatibleOnly, false);
 check("an unknown sort order falls back", salvaged.sortOrder, "default");
+check("a non-boolean enabledOnly falls back", salvaged.enabledOnly, false);
 
 // The point of per-field fallback: one bad value must not cost the others.
 const partial = restoreSettings(
@@ -189,7 +196,111 @@ checkDeep("a non-object restores every default", restoreSettings(null, LIVE), DE
 checkDeep(
   "no live data yet defaults the validated fields",
   restoreSettings(settings, {}),
-  { ...DEFAULT_SETTINGS, displayLimit: 1200, search: "nvid", assetClass: "STOCK", compatibleOnly: true },
+  {
+    ...DEFAULT_SETTINGS,
+    displayLimit: 1200,
+    search: "nvid",
+    compatibleOnly: true,
+    enabledOnly: true,
+  },
+);
+
+/* ---------- sort orders ---------- */
+
+for (const order of ["score", "symbol", "name", "synced"]) {
+  check(
+    `${order} sort order restores as itself`,
+    restoreSettings({ sortOrder: order }, LIVE).sortOrder,
+    order,
+  );
+}
+for (const order of ["bogus", "bars"]) {
+  check(
+    `${order} sort order restores as default`,
+    restoreSettings({ sortOrder: order }, LIVE).sortOrder,
+    "default",
+  );
+}
+
+/* ---------- list-derived filters ---------- */
+
+check(
+  "stale asset class falls back",
+  restoreSettings({ assetClass: "GONE" }, LIVE).assetClass,
+  "",
+);
+check(
+  "present asset class restores",
+  restoreSettings({ assetClass: "STOCK" }, LIVE).assetClass,
+  "STOCK",
+);
+check(
+  "stale quote currency falls back",
+  restoreSettings({ quoteCurrency: "USD" }, LIVE).quoteCurrency,
+  "",
+);
+check(
+  "present quote currency restores",
+  restoreSettings({ quoteCurrency: "EUR" }, LIVE).quoteCurrency,
+  "EUR",
+);
+check(
+  "stale exchange falls back",
+  restoreSettings({ exchange: "NASDAQ" }, LIVE).exchange,
+  "",
+);
+check(
+  "present exchange restores",
+  restoreSettings({ exchange: "XETRA" }, LIVE).exchange,
+  "XETRA",
+);
+checkDeep(
+  "stale asset class does not disturb other list filters",
+  restoreSettings({ assetClass: "GONE", quoteCurrency: "EUR", exchange: "XETRA" }, LIVE),
+  { ...DEFAULT_SETTINGS, quoteCurrency: "EUR", exchange: "XETRA" },
+);
+
+/* ---------- legacy settings without new keys ---------- */
+
+const legacy = {
+  displayLimit: 1200,
+  symbol: "NVD.DE",
+  timeframe: "h1",
+  indicators: ["fvg"],
+  search: "nvid",
+  assetClass: "STOCK",
+  compatibleOnly: true,
+  sortOrder: "score",
+};
+checkDeep(
+  "legacy shape restores new filters at defaults",
+  restoreSettings(legacy, LIVE),
+  {
+    displayLimit: 1200,
+    symbol: "NVD.DE",
+    timeframe: "h1",
+    indicators: ["fvg"],
+    search: "nvid",
+    assetClass: "STOCK",
+    quoteCurrency: "",
+    exchange: "",
+    compatibleOnly: true,
+    enabledOnly: false,
+    sortOrder: "score",
+  },
+);
+
+/* ---------- enabledOnly ---------- */
+
+check(
+  "enabledOnly true restores",
+  restoreSettings({ enabledOnly: true }, LIVE).enabledOnly,
+  true,
+);
+check(
+  "enabledOnly non-boolean falls back",
+  restoreSettings({ enabledOnly: "yes" }, LIVE).enabledOnly,
+  false,
 );
 
 if (failures) {

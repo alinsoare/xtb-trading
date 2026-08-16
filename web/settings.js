@@ -13,6 +13,7 @@
  */
 
 export const SETTINGS_KEY = "xtb-charts.settings";
+// Still 1: new filter keys are additive; restoreSettings already defaults absent keys.
 export const SETTINGS_VERSION = 1;
 
 /** Display limit meaning "every stored bar". A word, not 0 or an empty field,
@@ -21,7 +22,7 @@ export const SHOW_ALL = "all";
 export const DEFAULT_DISPLAY_LIMIT = 5000;
 
 export const DEFAULT_SORT_ORDER = "default";
-export const VALID_SORT_ORDERS = new Set(["default", "score"]);
+export const VALID_SORT_ORDERS = new Set(["default", "score", "symbol", "name", "synced"]);
 
 export const DEFAULT_SETTINGS = Object.freeze({
   displayLimit: DEFAULT_DISPLAY_LIMIT,
@@ -30,7 +31,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   indicators: [],
   search: "",
   assetClass: "",
+  quoteCurrency: "",
+  exchange: "",
   compatibleOnly: false,
+  enabledOnly: false,
   sortOrder: DEFAULT_SORT_ORDER,
 });
 
@@ -118,11 +122,20 @@ export function writeSettings(storage, settings) {
  * no longer resolves falls back to its default without abandoning the rest, so a
  * renamed instrument costs the user their selection and nothing else.
  */
+function restoreListFilter(raw, list, defaultValue) {
+  if (typeof raw !== "string") return defaultValue;
+  if (!raw) return defaultValue;
+  return list.includes(raw) ? raw : defaultValue;
+}
+
 export function restoreSettings(stored, live = {}) {
   const source = stored && typeof stored === "object" ? stored : {};
   const symbols = live.symbols || [];
   const timeframes = live.timeframes || [];
   const indicatorIds = live.indicatorIds || [];
+  const assetClasses = live.assetClasses || [];
+  const currencies = live.currencies || [];
+  const exchanges = live.exchanges || [];
 
   return {
     displayLimit: parseDisplayLimit(source.displayLimit) ?? DEFAULT_SETTINGS.displayLimit,
@@ -134,14 +147,25 @@ export function restoreSettings(stored, live = {}) {
       ? source.indicators.filter((id) => indicatorIds.includes(id))
       : [...DEFAULT_SETTINGS.indicators],
     search: typeof source.search === "string" ? source.search : DEFAULT_SETTINGS.search,
-    assetClass:
-      typeof source.assetClass === "string"
-        ? source.assetClass
-        : DEFAULT_SETTINGS.assetClass,
+    assetClass: restoreListFilter(
+      source.assetClass,
+      assetClasses,
+      DEFAULT_SETTINGS.assetClass,
+    ),
+    quoteCurrency: restoreListFilter(
+      source.quoteCurrency,
+      currencies,
+      DEFAULT_SETTINGS.quoteCurrency,
+    ),
+    exchange: restoreListFilter(source.exchange, exchanges, DEFAULT_SETTINGS.exchange),
     compatibleOnly:
       typeof source.compatibleOnly === "boolean"
         ? source.compatibleOnly
         : DEFAULT_SETTINGS.compatibleOnly,
+    enabledOnly:
+      typeof source.enabledOnly === "boolean"
+        ? source.enabledOnly
+        : DEFAULT_SETTINGS.enabledOnly,
     sortOrder: VALID_SORT_ORDERS.has(source.sortOrder)
       ? source.sortOrder
       : DEFAULT_SETTINGS.sortOrder,

@@ -1,0 +1,83 @@
+/* Pure catalog list filtering and ordering — no DOM, testable in Node. */
+
+import { VALID_SORT_ORDERS } from "./settings.js";
+
+export function filterSymbols(symbols, filters) {
+  const query = (filters.search || "").trim().toLowerCase();
+  const assetClass = filters.assetClass || "";
+  const quoteCurrency = filters.quoteCurrency || "";
+  const exchange = filters.exchange || "";
+  const compatibleOnly = filters.compatibleOnly || false;
+  const enabledOnly = filters.enabledOnly || false;
+
+  return symbols.filter((s) => {
+    if (compatibleOnly && !s.compatible) return false;
+    if (enabledOnly && !s.enabled) return false;
+    if (assetClass && s.asset_class !== assetClass) return false;
+    if (quoteCurrency && s.quote_currency !== quoteCurrency) return false;
+    if (exchange && s.exchange !== exchange) return false;
+    if (!query) return true;
+    return (
+      s.xtb_symbol.toLowerCase().includes(query) ||
+      (s.name || "").toLowerCase().includes(query) ||
+      (s.xtb_name || "").toLowerCase().includes(query)
+    );
+  });
+}
+
+function sortWithIndex(symbols, compareSymbols) {
+  return symbols
+    .map((symbol, index) => ({ symbol, index }))
+    .sort((a, b) => {
+      const cmp = compareSymbols(a.symbol, b.symbol);
+      if (cmp !== 0) return cmp;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.symbol);
+}
+
+function compareScore(a, b, screenerScores) {
+  const scoreA = screenerScores[a.xtb_symbol]?.score ?? 0;
+  const scoreB = screenerScores[b.xtb_symbol]?.score ?? 0;
+  return scoreB - scoreA;
+}
+
+function compareSymbol(a, b) {
+  return a.xtb_symbol.localeCompare(b.xtb_symbol);
+}
+
+function compareName(a, b) {
+  return (a.name || "").localeCompare(b.name || "");
+}
+
+function compareSynced(a, b) {
+  const aSync = a.last_sync_utc;
+  const bSync = b.last_sync_utc;
+  if (aSync && !bSync) return -1;
+  if (!aSync && bSync) return 1;
+  if (aSync && bSync) {
+    const aTime = new Date(aSync).getTime();
+    const bTime = new Date(bSync).getTime();
+    if (bTime !== aTime) return bTime - aTime;
+  }
+  return 0;
+}
+
+const COMPARATORS = {
+  score: (a, b, scores) => compareScore(a, b, scores),
+  symbol: (a, b) => compareSymbol(a, b),
+  name: (a, b) => compareName(a, b),
+  synced: (a, b) => compareSynced(a, b),
+};
+
+export function sortSymbols(symbols, sortOrder, screenerScores = {}) {
+  if (sortOrder === "default") return symbols;
+  if (!VALID_SORT_ORDERS.has(sortOrder)) return symbols;
+  const comparator = COMPARATORS[sortOrder];
+  if (!comparator) return symbols;
+  return sortWithIndex(symbols, (a, b) => comparator(a, b, screenerScores));
+}
+
+export function visibleSymbolList(symbols, filters, sortOrder, screenerScores = {}) {
+  return sortSymbols(filterSymbols(symbols, filters), sortOrder, screenerScores);
+}

@@ -18,6 +18,7 @@ import "./indicators/ob.js"; // registers the OB indicator
 import "./indicators/macd.js"; // registers the MACD indicator
 import {
   DEFAULT_DISPLAY_LIMIT,
+  DEFAULT_SETTINGS,
   applyDisplayLimit,
   browserStorage,
   limitToText,
@@ -26,6 +27,7 @@ import {
   restoreSettings,
   writeSettings,
 } from "./settings.js";
+import { visibleSymbolList } from "./symbol-list.js";
 import { renderScreenerRow } from "./screener/render.js";
 import { runScan } from "./screener/scan.js";
 
@@ -53,6 +55,7 @@ const state = {
   screenerScores: {},
   screenerScanning: false,
   screenerProgress: null,
+  visibleCount: 0,
   // Nothing is persisted until the restore has finished writing state.
   ready: false,
 };
@@ -61,8 +64,12 @@ const el = {
   list: document.getElementById("symbol-list"),
   search: document.getElementById("search"),
   assetFilter: document.getElementById("asset-filter"),
+  currencyFilter: document.getElementById("currency-filter"),
+  exchangeFilter: document.getElementById("exchange-filter"),
   sortOrder: document.getElementById("sort-order"),
   compatibleOnly: document.getElementById("compatible-only"),
+  enabledOnly: document.getElementById("enabled-only"),
+  clearFilters: document.getElementById("clear-filters"),
   summary: document.getElementById("catalog-summary"),
   title: document.getElementById("chart-title"),
   subtitle: document.getElementById("chart-subtitle"),
@@ -242,7 +249,7 @@ async function getJSON(url, options) {
 async function loadCatalog({ autoSelect = true } = {}) {
   const data = await getJSON("data/catalog.json");
   state.symbols = data.symbols;
-  populateAssetFilter();
+  populateFilters();
   renderList();
   renderSummary();
   if (!autoSelect) return;
@@ -423,37 +430,29 @@ function badgeFor(reason) {
   return `<span class="badge ${danger ? "danger" : "warn"}">${escapeHtml(reason)}</span>`;
 }
 
+function sidebarFilters() {
+  return {
+    search: el.search.value,
+    assetClass: el.assetFilter.value,
+    quoteCurrency: el.currencyFilter.value,
+    exchange: el.exchangeFilter.value,
+    compatibleOnly: el.compatibleOnly.checked,
+    enabledOnly: el.enabledOnly.checked,
+  };
+}
+
 function visibleSymbols() {
-  const query = el.search.value.trim().toLowerCase();
-  const assetClass = el.assetFilter.value;
-  const compatibleOnly = el.compatibleOnly.checked;
-
-  const items = state.symbols.filter((s) => {
-    if (compatibleOnly && !s.compatible) return false;
-    if (assetClass && s.asset_class !== assetClass) return false;
-    if (!query) return true;
-    return (
-      s.xtb_symbol.toLowerCase().includes(query) ||
-      (s.name || "").toLowerCase().includes(query) ||
-      (s.xtb_name || "").toLowerCase().includes(query)
-    );
-  });
-
-  if (el.sortOrder.value !== "score") return items;
-
-  return items
-    .map((symbol, index) => ({ symbol, index }))
-    .sort((a, b) => {
-      const scoreA = state.screenerScores[a.symbol.xtb_symbol]?.score ?? 0;
-      const scoreB = state.screenerScores[b.symbol.xtb_symbol]?.score ?? 0;
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return a.index - b.index;
-    })
-    .map((entry) => entry.symbol);
+  return visibleSymbolList(
+    state.symbols,
+    sidebarFilters(),
+    el.sortOrder.value,
+    state.screenerScores,
+  );
 }
 
 function renderList() {
   const items = visibleSymbols();
+  state.visibleCount = items.length;
   el.list.innerHTML = "";
 
   if (!items.length) {
@@ -496,11 +495,12 @@ function renderList() {
 
 function renderSummary() {
   const total = state.symbols.length;
+  const visible = state.visibleCount;
   const flagged = state.symbols.filter((s) => !s.compatible).length;
   const bars = state.symbols.reduce((sum, s) => sum + s.total_bars, 0);
-  let text =
-    `${total} instruments · ${bars.toLocaleString()} bars` +
-    (flagged ? ` · ${flagged} flagged` : "");
+  const instrumentText =
+    visible !== total ? `${visible} of ${total} instruments` : `${total} instruments`;
+  let text = `${instrumentText} · ${bars.toLocaleString()} bars` + (flagged ? ` · ${flagged} flagged` : "");
   if (state.screenerScanning && state.screenerProgress) {
     const { done, total: scanTotal } = state.screenerProgress;
     text += ` · screening ${done}/${scanTotal}`;
@@ -541,17 +541,23 @@ function renderTimeframes() {
   }
 }
 
-function populateAssetFilter() {
-  const classes = [...new Set(state.symbols.map((s) => s.asset_class))].sort();
-  const current = el.assetFilter.value;
-  el.assetFilter.innerHTML = `<option value="">All classes</option>`;
-  for (const cls of classes) {
+function populateSelect(select, field, allLabel) {
+  const values = [...new Set(state.symbols.map((s) => s[field]))].sort();
+  const current = select.value;
+  select.innerHTML = `<option value="">${allLabel}</option>`;
+  for (const value of values) {
     const option = document.createElement("option");
-    option.value = cls;
-    option.textContent = cls;
-    el.assetFilter.appendChild(option);
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
   }
-  el.assetFilter.value = current;
+  select.value = current;
+}
+
+function populateFilters() {
+  populateSelect(el.assetFilter, "asset_class", "All classes");
+  populateSelect(el.currencyFilter, "quote_currency", "All currencies");
+  populateSelect(el.exchangeFilter, "exchange", "All exchanges");
 }
 
 function renderFooter() {
@@ -704,7 +710,10 @@ function persist() {
     indicators: [...state.enabledIndicators],
     search: el.search.value,
     assetClass: el.assetFilter.value,
+    quoteCurrency: el.currencyFilter.value,
+    exchange: el.exchangeFilter.value,
     compatibleOnly: el.compatibleOnly.checked,
+    enabledOnly: el.enabledOnly.checked,
     sortOrder: el.sortOrder.value,
   });
 }
@@ -731,8 +740,8 @@ async function startScreener() {
   } finally {
     state.screenerScanning = false;
     state.screenerProgress = null;
-    renderSummary();
     renderList();
+    renderSummary();
   }
 }
 
@@ -740,13 +749,29 @@ async function startScreener() {
 
 function onFilterChange() {
   renderList();
+  renderSummary();
   persist();
+}
+
+function clearSidebarFilters() {
+  el.search.value = DEFAULT_SETTINGS.search;
+  el.assetFilter.value = DEFAULT_SETTINGS.assetClass;
+  el.currencyFilter.value = DEFAULT_SETTINGS.quoteCurrency;
+  el.exchangeFilter.value = DEFAULT_SETTINGS.exchange;
+  el.compatibleOnly.checked = DEFAULT_SETTINGS.compatibleOnly;
+  el.enabledOnly.checked = DEFAULT_SETTINGS.enabledOnly;
+  el.sortOrder.value = DEFAULT_SETTINGS.sortOrder;
+  onFilterChange();
 }
 
 el.search.addEventListener("input", onFilterChange);
 el.assetFilter.addEventListener("change", onFilterChange);
+el.currencyFilter.addEventListener("change", onFilterChange);
+el.exchangeFilter.addEventListener("change", onFilterChange);
 el.sortOrder.addEventListener("change", onFilterChange);
 el.compatibleOnly.addEventListener("change", onFilterChange);
+el.enabledOnly.addEventListener("change", onFilterChange);
+el.clearFilters.addEventListener("click", clearSidebarFilters);
 el.displayLimit.addEventListener("change", () => changeDisplayLimit(el.displayLimit.value));
 el.jumpToLatest.addEventListener("click", jumpToLatest);
 el.syncAll.addEventListener("click", () => startSync(null));
@@ -775,10 +800,17 @@ async function boot() {
   // be checked against it before it can be trusted.
   await loadCatalog({ autoSelect: false });
 
+  const assetClasses = [...new Set(state.symbols.map((s) => s.asset_class))];
+  const currencies = [...new Set(state.symbols.map((s) => s.quote_currency))];
+  const exchanges = [...new Set(state.symbols.map((s) => s.exchange))];
+
   const restored = restoreSettings(stored, {
     symbols: state.symbols.map((s) => s.xtb_symbol),
     timeframes: state.meta.timeframe_order,
     indicatorIds: allIndicators().map((i) => i.id),
+    assetClasses,
+    currencies,
+    exchanges,
   });
 
   state.displayLimit = restored.displayLimit;
@@ -787,16 +819,18 @@ async function boot() {
   el.displayLimit.value = limitToText(state.displayLimit);
   el.search.value = restored.search;
   el.compatibleOnly.checked = restored.compatibleOnly;
+  el.enabledOnly.checked = restored.enabledOnly;
   el.sortOrder.value = restored.sortOrder;
-  // Assigning an asset class the catalog no longer offers leaves the select on
-  // "All classes", which is the fallback we want anyway.
   el.assetFilter.value = restored.assetClass;
+  el.currencyFilter.value = restored.quoteCurrency;
+  el.exchangeFilter.value = restored.exchange;
 
   renderTimeframes();
   renderIndicatorToggles();
   renderChartTools();
   renderFooter();
   renderList();
+  renderSummary();
 
   state.ready = true;
 
