@@ -17,7 +17,7 @@ import {
   IMPULSE,
   OB_STRUCTURE_SOURCE,
 } from "./ob-structure.js";
-import { ZONE_PALETTE } from "./palette.js";
+import { PIVOT_LABEL_COLOR, ZONE_PALETTE } from "./palette.js";
 import { registerIndicator } from "./registry.js";
 
 /* MT5 defaults. Dropped vs source: lookback cap (full-history scan), display/trend
@@ -357,7 +357,7 @@ registerIndicator({
   minBars: OB_PARAMS.pivotBars * 3 + 1,
   compute(bars, instrument) {
     const pointSize = instrument?.point_size ?? 0.01;
-    const { zones, warning } = obZones(bars, pointSize);
+    const { zones, structure, warning } = obZones(bars, pointSize);
     const drawables = [];
     for (const zone of zones) {
       const color = OB_COLORS[zone.direction];
@@ -378,6 +378,21 @@ registerIndicator({
         color,
         baseline: zone.direction === "supply" ? "top" : "bottom",
       });
+    }
+    if (structure?.pivots?.length) {
+      for (const pivot of structure.pivots) {
+        drawables.push({
+          type: "label",
+          time: pivot.barTime,
+          price: pivot.isHigh ? pivot.high : pivot.low,
+          text: pivot.isHigh ? "H" : "L",
+          color: PIVOT_LABEL_COLOR,
+          baseline: pivot.isHigh ? "bottom" : "top",
+          align: "center",
+          offset: 4,
+          emphasis: true,
+        });
+      }
     }
     return { drawables, warning };
   },

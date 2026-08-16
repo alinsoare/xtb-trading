@@ -15,7 +15,8 @@
  * Drawable shapes:
  *   { type: "rect",  timeFrom, timeTo, priceLow, priceHigh, color,
  *     style?: "stroke" | "fill", lineWidth?: number }  // stroke default, lineWidth 1
- *   { type: "label", time, price, text, color, baseline: "top" | "bottom" }
+ *   { type: "label", time, price, text, color, baseline: "top" | "bottom",
+ *     align?: "left" | "center", offset?: number, emphasis?: boolean }
  *
  * Pane series:
  *   { kind: "line" | "histogram", title, color, data: [{ time, value, color? }] }
@@ -158,10 +159,36 @@ export class IndicatorPrimitive {
     const x = xCoordinate(label.time, timeScale, visible, width);
     const y = this._series.priceToCoordinate(label.price);
     if (x === null || y === null) return;
+
+    const prevFillStyle = ctx.fillStyle;
+    const prevFont = ctx.font;
+    const prevTextAlign = ctx.textAlign;
+    const prevTextBaseline = ctx.textBaseline;
+
     ctx.fillStyle = label.color;
-    ctx.font = "9px Arial, sans-serif";
+    ctx.font = label.emphasis
+      ? "bold 11px Arial, sans-serif"
+      : "9px Arial, sans-serif";
     ctx.textAlign = "left";
-    ctx.textBaseline = label.baseline === "top" ? "top" : "bottom";
-    ctx.fillText(label.text, x, y);
+    const baseline = label.baseline === "top" ? "top" : "bottom";
+    ctx.textBaseline = baseline;
+
+    let drawX = x;
+    if (label.align === "center") {
+      drawX -= ctx.measureText(label.text).width / 2;
+    }
+
+    const offset = label.offset ?? 0;
+    let drawY = y;
+    if (offset !== 0) {
+      drawY += baseline === "bottom" ? -offset : offset;
+    }
+
+    ctx.fillText(label.text, drawX, drawY);
+
+    ctx.fillStyle = prevFillStyle;
+    ctx.font = prevFont;
+    ctx.textAlign = prevTextAlign;
+    ctx.textBaseline = prevTextBaseline;
   }
 }
