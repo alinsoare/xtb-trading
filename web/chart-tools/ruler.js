@@ -10,8 +10,8 @@
  * wiring, deliberately thin because neither part is unit-tested.
  */
 
-import { xCoordinate } from "../chart/coords.js";
-import { measure, measurementLines } from "./measure.js";
+import { xCoordinate, xCoordinateLogical } from "../chart/coords.js";
+import { barIntervalSeconds, measure, measurementLines } from "./measure.js";
 import { registerTool } from "./registry.js";
 import { suppressDragPan } from "./scroll-lock.js";
 
@@ -36,6 +36,7 @@ class RulerPrimitive {
     this._lines = [];
     this._chart = null;
     this._series = null;
+    this._bars = null;
     this._requestUpdate = null;
 
     const primitive = this;
@@ -61,6 +62,10 @@ class RulerPrimitive {
     return [this._paneView];
   }
 
+  setBarsAccessor(bars) {
+    this._bars = bars;
+  }
+
   updateAllViews() {}
 
   /* The single entry point: preview, completion and dismissal all land here. */
@@ -79,10 +84,16 @@ class RulerPrimitive {
       const { width, height } = scope.mediaSize;
       const timeScale = this._chart.timeScale();
       const visible = timeScale.getVisibleRange();
+      const visibleLogical = timeScale.getVisibleLogicalRange();
       if (!visible) return;
 
+      const bars = this._bars ? this._bars() : [];
+      const toLogical = projectedEndLogical(bars, m.anchorTimeTo);
+      const right =
+        toLogical !== null
+          ? xCoordinateLogical(toLogical, timeScale, visibleLogical, width)
+          : xCoordinate(m.timeTo, timeScale, visible, width);
       const left = xCoordinate(m.timeFrom, timeScale, visible, width);
-      const right = xCoordinate(m.timeTo, timeScale, visible, width);
       const top = this._series.priceToCoordinate(m.priceHigh);
       const bottom = this._series.priceToCoordinate(m.priceLow);
       if (left === null || right === null || top === null || bottom === null) return;
@@ -96,7 +107,10 @@ class RulerPrimitive {
       ctx.strokeRect(left, top, right - left, bottom - top);
 
       const xFrom = xCoordinate(m.anchorTimeFrom, timeScale, visible, width);
-      const xTo = xCoordinate(m.anchorTimeTo, timeScale, visible, width);
+      const xTo =
+        toLogical !== null
+          ? xCoordinateLogical(toLogical, timeScale, visibleLogical, width)
+          : xCoordinate(m.anchorTimeTo, timeScale, visible, width);
       const yFrom = this._series.priceToCoordinate(m.priceFrom);
       const yTo = this._series.priceToCoordinate(m.priceTo);
       if (xFrom !== null && xTo !== null && yFrom !== null && yTo !== null) {
@@ -158,6 +172,19 @@ class RulerPrimitive {
 
 /* ---------- Interaction ---------- */
 
+function projectedEndLogical(bars, anchorTime) {
+  if (!bars || !bars.length) return null;
+  const lastIndex = bars.length - 1;
+  const lastTime = bars[lastIndex].time;
+  if (anchorTime <= lastTime) return null;
+
+  const interval = barIntervalSeconds(bars);
+  if (!interval) return null;
+
+  const barsAhead = Math.round((anchorTime - lastTime) / interval);
+  return lastIndex + barsAhead;
+}
+
 const primitive = new RulerPrimitive();
 
 const ruler = {
@@ -168,11 +195,36 @@ const ruler = {
   restoreDragPan: null,
 };
 
-function anchorFrom(param) {
-  if (!param || param.time === undefined || param.time === null || !param.point) return null;
+function anchorFrom(param, { allowProjected = false } = {}) {
+  if (!param || !param.point || !ruler.context) return null;
+
   const price = ruler.context.series.coordinateToPrice(param.point.y);
   if (price === null || !Number.isFinite(price)) return null;
-  return { time: param.time, price };
+
+  if (param.time !== undefined && param.time !== null) {
+    return { time: param.time, price, barsAhead: 0 };
+  }
+
+  if (!allowProjected) return null;
+
+  const bars = ruler.context.bars();
+  if (!bars.length) return null;
+
+  const logical = param.logical;
+  if (logical === undefined || logical === null) return null;
+
+  const lastIndex = bars.length - 1;
+  const barsAhead = Math.max(0, Math.round(logical) - lastIndex);
+  if (barsAhead === 0) return null;
+
+  const interval = barIntervalSeconds(bars);
+  if (!interval) return null;
+
+  return {
+    time: bars[lastIndex].time + barsAhead * interval,
+    price,
+    barsAhead,
+  };
 }
 
 function show(measurement) {
@@ -186,15 +238,18 @@ function show(measurement) {
 function onClick(param) {
   const bars = ruler.context.bars();
   if (!bars.length) return; // nothing to measure against
-  const anchor = anchorFrom(param);
-  if (!anchor) return; // whitespace past the last bar, or off the pane
 
   if (ruler.pending) {
+    const anchor = anchorFrom(param, { allowProjected: true });
+    if (!anchor) return;
     const completed = measure(bars, ruler.pending, anchor);
     ruler.pending = null;
     show(completed);
     return;
   }
+
+  const anchor = anchorFrom(param, { allowProjected: false });
+  if (!anchor) return; // whitespace past the last bar, or off the pane
 
   ruler.pending = anchor;
   show(null); // a new measurement replaces the previous one rather than adding
@@ -204,7 +259,7 @@ function onCrosshairMove(param) {
   if (!ruler.pending) return; // a finished measurement never moves
   const bars = ruler.context.bars();
   if (!bars.length) return;
-  const anchor = anchorFrom(param);
+  const anchor = anchorFrom(param, { allowProjected: true });
   if (!anchor) return;
   show(measure(bars, ruler.pending, anchor));
 }
@@ -229,6 +284,7 @@ registerTool({
       series.attachPrimitive(primitive);
       ruler.attached = true;
     }
+    primitive.setBarsAccessor(context.bars);
 
     // lightweight-charts emits a click at the end of a drag, so panning by
     // dragging the chart body would drop an unintended anchor. Wheel zoom and
@@ -251,6 +307,7 @@ registerTool({
     ruler.restoreDragPan();
     ruler.restoreDragPan = null;
 
+    primitive.setBarsAccessor(null);
     ruler.pending = null;
     show(null);
     ruler.context = null;

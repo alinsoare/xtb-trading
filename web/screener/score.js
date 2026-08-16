@@ -5,7 +5,7 @@ import {
   FVG_MIN_BARS,
   inLiveBullishFvg,
   lastConfirmedHighPivot,
-  macdAscending,
+  macdRedMorningStar,
   MACD_MIN_BARS,
   PIVOT_MIN_BARS,
 } from "./signals.js";
@@ -15,10 +15,15 @@ export const GATE_MIN_PEAK_DISCOUNT = 0.02;
 export const WEIGHT_GATE_PASS = 1;
 export const WEIGHT_D1_FVG_H1_RUN = 2;
 export const WEIGHT_H1_FVG_M15_RUN = 1;
-export const WEIGHT_MACD_ASCENDING = 1;
+export const WEIGHT_MACD_RED_MORNING_STAR = 1;
 export const H1_RUN_BARS = 1;
 export const M15_RUN_BARS = 1;
 export const PIVOT_BANDS = [0.02, 0.05, 0.1];
+export const SOURCE_GATE = "gate";
+export const SOURCE_D1_FVG_H1 = "D1 FVG+H1";
+export const SOURCE_H1_FVG_M15 = "H1 FVG+M15";
+export const SOURCE_MACD = "MACD";
+export const SOURCE_PIVOT = "pivot";
 
 export function scorePivotDistance(distance) {
   if (distance == null || distance <= PIVOT_BANDS[0]) return 0;
@@ -90,7 +95,7 @@ export function scoreInstrument({
     return emptyResult("screened", rangePct, positionPct);
   }
 
-  const reasons = [{ rule: "Eligibility gate", points: WEIGHT_GATE_PASS }];
+  const reasons = [{ rule: "Eligibility gate", points: WEIGHT_GATE_PASS, source: SOURCE_GATE }];
   let score = WEIGHT_GATE_PASS;
 
   const d1Fvg = signalOverrides.d1Fvg ?? inLiveBullishFvg(bars.d1, pointSize, price);
@@ -100,7 +105,11 @@ export function scoreInstrument({
   }
   if (d1Fvg.ok && h1Run.ok) {
     score += WEIGHT_D1_FVG_H1_RUN;
-    reasons.push({ rule: "D1 FVG + H1 bullish run", points: WEIGHT_D1_FVG_H1_RUN });
+    reasons.push({
+      rule: "D1 FVG + H1 bullish run",
+      points: WEIGHT_D1_FVG_H1_RUN,
+      source: SOURCE_D1_FVG_H1,
+    });
   }
 
   const h1Fvg = signalOverrides.h1Fvg ?? inLiveBullishFvg(bars.h1, pointSize, price);
@@ -110,16 +119,24 @@ export function scoreInstrument({
   }
   if (h1Fvg.ok && m15Run.ok) {
     score += WEIGHT_H1_FVG_M15_RUN;
-    reasons.push({ rule: "H1 FVG + M15 bullish run", points: WEIGHT_H1_FVG_M15_RUN });
+    reasons.push({
+      rule: "H1 FVG + M15 bullish run",
+      points: WEIGHT_H1_FVG_M15_RUN,
+      source: SOURCE_H1_FVG_M15,
+    });
   }
 
-  const macd = signalOverrides.macd ?? macdAscending(bars.d1);
+  const macd = signalOverrides.macd ?? macdRedMorningStar(bars.d1);
   if (macd.insufficient) {
     return emptyResult("insufficient-history", rangePct, positionPct);
   }
   if (macd.ok) {
-    score += WEIGHT_MACD_ASCENDING;
-    reasons.push({ rule: "D1 MACD ascending", points: WEIGHT_MACD_ASCENDING });
+    score += WEIGHT_MACD_RED_MORNING_STAR;
+    reasons.push({
+      rule: "D1 MACD red morning star",
+      points: WEIGHT_MACD_RED_MORNING_STAR,
+      source: SOURCE_MACD,
+    });
   }
 
   const pivot = signalOverrides.pivot ?? lastConfirmedHighPivot(bars.d1, pointSize, price);
@@ -129,7 +146,7 @@ export function scoreInstrument({
   const pivotPoints = scorePivotDistance(pivot.pivotDistance);
   if (pivotPoints > 0) {
     score += pivotPoints;
-    reasons.push({ rule: "D1 pivot distance", points: pivotPoints });
+    reasons.push({ rule: "D1 pivot distance", points: pivotPoints, source: SOURCE_PIVOT });
   }
 
   return {

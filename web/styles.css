@@ -121,6 +121,18 @@ body { display: flex; }
   border-radius: 50%;
   background: #4ac08a;
 }
+.screener-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.screener-source {
+  white-space: nowrap;
+}
 .screener-figures,
 .screener-state {
   font-size: 11px;

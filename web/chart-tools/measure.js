@@ -13,6 +13,7 @@ const MINUTE = 60;
 const HOUR = 3600;
 const DAY = 86400;
 const YEAR = 365 * DAY;
+const INTERVAL_SAMPLE = 20;
 
 /* Index of the stored bar closest to a time. Anchors carry a bar time straight
  * from the chart, so this normally lands exactly; the nearest-match fallback
@@ -32,15 +33,50 @@ export function nearestBarIndex(bars, time) {
   return low;
 }
 
-/* Measure between two anchors, each { time, price }. Returns null when there is
- * nothing to measure against. */
+/* Median gap over the last ~20 stored bars. Irregular final gaps (weekends on
+ * D1) are outliers; the median keeps projected steps aligned with the series. */
+export function barIntervalSeconds(bars) {
+  if (!bars || bars.length < 2) return null;
+
+  const sampleCount = Math.min(INTERVAL_SAMPLE, bars.length - 1);
+  const start = bars.length - 1 - sampleCount;
+  const gaps = [];
+  for (let i = start + 1; i < bars.length; i++) {
+    gaps.push(bars[i].time - bars[i - 1].time);
+  }
+  gaps.sort((a, b) => a - b);
+  const mid = gaps.length >> 1;
+  return gaps.length % 2 ? gaps[mid] : (gaps[mid - 1] + gaps[mid]) / 2;
+}
+
+function resolveAnchor(bars, anchor, role) {
+  const lastIndex = bars.length - 1;
+  const barsAhead = anchor.barsAhead > 0 ? anchor.barsAhead : 0;
+  if (role === "to" && barsAhead > 0) {
+    const interval = barIntervalSeconds(bars);
+    if (interval) {
+      return {
+        index: lastIndex + barsAhead,
+        time: bars[lastIndex].time + barsAhead * interval,
+      };
+    }
+  }
+
+  const index = nearestBarIndex(bars, anchor.time);
+  return { index, time: bars[index].time };
+}
+
+/* Measure between two anchors, each { time, price } and optionally barsAhead on
+ * the end anchor. Returns null when there is nothing to measure against. */
 export function measure(bars, from, to) {
   if (!bars || !bars.length || !from || !to) return null;
 
-  const fromIndex = nearestBarIndex(bars, from.time);
-  const toIndex = nearestBarIndex(bars, to.time);
-  const fromTime = bars[fromIndex].time;
-  const toTime = bars[toIndex].time;
+  const fromResolved = resolveAnchor(bars, from, "from");
+  const toResolved = resolveAnchor(bars, to, "to");
+  const fromIndex = fromResolved.index;
+  const toIndex = toResolved.index;
+  const fromTime = fromResolved.time;
+  const toTime = toResolved.time;
 
   // Relative to the anchor clicked first, so a measurement drawn right to left
   // still reads as "from where I started". Magnitude via abs() keeps the

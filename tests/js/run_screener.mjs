@@ -8,7 +8,7 @@ import {
   SEQUENCE_SCAN_CAP,
 } from "../../web/screener/bars.js";
 import { computeRange } from "../../web/screener/range.js";
-import { bullishRun, macdAscending } from "../../web/screener/signals.js";
+import { bullishRun, isMacdRedMorningStarTrough, macdRedMorningStar } from "../../web/screener/signals.js";
 import {
   GATE_MIN_PEAK_DISCOUNT,
   GATE_MIN_RANGE_PCT,
@@ -17,10 +17,15 @@ import {
   markCount,
   scoreInstrument,
   scorePivotDistance,
+  SOURCE_D1_FVG_H1,
+  SOURCE_GATE,
+  SOURCE_H1_FVG_M15,
+  SOURCE_MACD,
+  SOURCE_PIVOT,
   WEIGHT_D1_FVG_H1_RUN,
   WEIGHT_GATE_PASS,
   WEIGHT_H1_FVG_M15_RUN,
-  WEIGHT_MACD_ASCENDING,
+  WEIGHT_MACD_RED_MORNING_STAR,
 } from "../../web/screener/score.js";
 
 let failures = 0;
@@ -138,12 +143,43 @@ for (let i = 0; i < SEQUENCE_SCAN_CAP + 5; i++) {
 longDojiStretch.push(bar(100, 10, 12, 9, 11));
 check("scan cap bounds bullish run walk", bullishRun(longDojiStretch, 3).ok, false);
 
-/* ---------- MACD ascending ---------- */
+/* ---------- MACD red morning star ---------- */
+
+check(
+  "negative-territory trough fires",
+  isMacdRedMorningStarTrough(-0.42, -0.61, -0.35),
+  true,
+);
+check(
+  "rising triple above zero does not fire",
+  isMacdRedMorningStarTrough(0.1, 0.2, 0.3),
+  false,
+);
+check(
+  "trough with newest above zero does not fire",
+  isMacdRedMorningStarTrough(-0.15, -0.05, 0.08),
+  false,
+);
+check(
+  "still-falling triple does not fire",
+  isMacdRedMorningStarTrough(-0.2, -0.4, -0.6),
+  false,
+);
+check(
+  "flat pair below zero does not fire",
+  isMacdRedMorningStarTrough(-0.3, -0.3, -0.2),
+  false,
+);
+check(
+  "exact zero newest bar does not fire",
+  isMacdRedMorningStarTrough(-0.1, -0.3, 0),
+  false,
+);
 
 const macdBars = makeBars(80, 1_700_000_000, 3600, 50);
-const macdResult = macdAscending(macdBars);
-check("macd ascending is boolean", typeof macdResult.ok, "boolean");
-check("short macd series is insufficient", macdAscending(makeBars(10)).insufficient, true);
+const macdResult = macdRedMorningStar(macdBars);
+check("macd red morning star is boolean", typeof macdResult.ok, "boolean");
+check("short macd series is insufficient", macdRedMorningStar(makeBars(10)).insufficient, true);
 
 const flatMacdBars = makeBars(80, 1_700_000_000, 3600, 50);
 for (let i = 0; i < flatMacdBars.length; i++) {
@@ -155,7 +191,7 @@ for (let i = 0; i < flatMacdBars.length; i++) {
     50,
   );
 }
-check("flat histogram does not count as ascending", macdAscending(flatMacdBars).ok, false);
+check("flat histogram does not count as red morning star", macdRedMorningStar(flatMacdBars).ok, false);
 
 /* ---------- pivot bands ---------- */
 
@@ -263,12 +299,22 @@ const fullConfluence = scoreInstrument({
 check("full confluence score", fullConfluence.score, 8);
 check("full confluence marks", fullConfluence.marks, 4);
 checkDeep("full confluence reasons", fullConfluence.reasons, [
-  { rule: "Eligibility gate", points: 1 },
-  { rule: "D1 FVG + H1 bullish run", points: 2 },
-  { rule: "H1 FVG + M15 bullish run", points: 1 },
-  { rule: "D1 MACD ascending", points: 1 },
-  { rule: "D1 pivot distance", points: 3 },
+  { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
+  { rule: "D1 FVG + H1 bullish run", points: 2, source: SOURCE_D1_FVG_H1 },
+  { rule: "H1 FVG + M15 bullish run", points: 1, source: SOURCE_H1_FVG_M15 },
+  { rule: "D1 MACD red morning star", points: 1, source: SOURCE_MACD },
+  { rule: "D1 pivot distance", points: 3, source: SOURCE_PIVOT },
 ]);
+check(
+  "full confluence source names are distinct",
+  new Set(fullConfluence.reasons.map((r) => r.source)).size,
+  5,
+);
+check(
+  "full confluence source order",
+  fullConfluence.reasons.map((r) => r.source).join(","),
+  [SOURCE_GATE, SOURCE_D1_FVG_H1, SOURCE_H1_FVG_M15, SOURCE_MACD, SOURCE_PIVOT].join(","),
+);
 
 const jmlpD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 17), {
   high: 19.31,
@@ -319,8 +365,9 @@ const gateOnly = scoreInstrument({
 check("gate-only instrument scores 1", gateOnly.score, 1);
 check("gate-only instrument carries one mark", gateOnly.marks, 1);
 checkDeep("gate-only reasons list only the eligibility gate", gateOnly.reasons, [
-  { rule: "Eligibility gate", points: 1 },
+  { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
 ]);
+check("gated-out has no source fields", gatedOut.reasons.every((r) => r.source == null), true);
 
 const boundaryD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
   high: 100,
@@ -387,12 +434,12 @@ check("gate min peak discount constant", GATE_MIN_PEAK_DISCOUNT, 0.02);
 check("weight gate pass constant", WEIGHT_GATE_PASS, 1);
 check("weight D1 FVG + H1 run constant", WEIGHT_D1_FVG_H1_RUN, 2);
 check("weight H1 FVG + M15 run constant", WEIGHT_H1_FVG_M15_RUN, 1);
-check("weight MACD ascending constant", WEIGHT_MACD_ASCENDING, 1);
+check("weight MACD red morning star constant", WEIGHT_MACD_RED_MORNING_STAR, 1);
 check("H1 run bars constant", H1_RUN_BARS, 1);
 check("M15 run bars constant", M15_RUN_BARS, 1);
 check(
   "weights plus top pivot band sum to 8",
-  WEIGHT_GATE_PASS + WEIGHT_D1_FVG_H1_RUN + WEIGHT_H1_FVG_M15_RUN + WEIGHT_MACD_ASCENDING + 3,
+  WEIGHT_GATE_PASS + WEIGHT_D1_FVG_H1_RUN + WEIGHT_H1_FVG_M15_RUN + WEIGHT_MACD_RED_MORNING_STAR + 3,
   8,
 );
 

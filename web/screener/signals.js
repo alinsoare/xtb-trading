@@ -46,7 +46,20 @@ export function inLiveBullishFvg(bars, pointSize, price) {
   return { ok: false, insufficient: false };
 }
 
-export function macdAscending(bars) {
+// Histogram below zero matches the chart colour rule (v < 0 is red; v >= 0 is up).
+export const MACD_HISTOGRAM_ZERO = 0;
+
+export function isMacdRedMorningStarTrough(h2, h1, h0) {
+  return (
+    h2 > h1 &&
+    h1 < h0 &&
+    h2 < MACD_HISTOGRAM_ZERO &&
+    h1 < MACD_HISTOGRAM_ZERO &&
+    h0 < MACD_HISTOGRAM_ZERO
+  );
+}
+
+export function macdRedMorningStar(bars) {
   if (bars.length < MACD_MIN_BARS) return { ok: false, insufficient: true };
 
   const { histogram } = macdArrays(bars);
@@ -60,7 +73,7 @@ export function macdAscending(bars) {
   if (Number.isNaN(h0) || Number.isNaN(h1) || Number.isNaN(h2)) {
     return { ok: false, insufficient: false };
   }
-  return { ok: h0 > h1 && h1 > h2, insufficient: false };
+  return { ok: isMacdRedMorningStarTrough(h2, h1, h0), insufficient: false };
 }
 
 export function lastConfirmedHighPivot(bars, pointSize, price) {

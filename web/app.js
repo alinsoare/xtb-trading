@@ -9,6 +9,7 @@
  */
 
 import { formatPrice, priceDecimals } from "./chart/format.js";
+import { defaultVisibleLogicalRange } from "./chart/viewport.js";
 import { allTools, activeToolId, setActiveTool } from "./chart-tools/registry.js";
 import "./chart-tools/ruler.js"; // registers the ruler tool
 import { allIndicators, IndicatorPrimitive } from "./indicators/registry.js";
@@ -25,6 +26,7 @@ import {
   restoreSettings,
   writeSettings,
 } from "./settings.js";
+import { renderScreenerRow } from "./screener/render.js";
 import { runScan } from "./screener/scan.js";
 
 /* An incremental sync, repeated while the user leaves the control on. Long
@@ -76,6 +78,7 @@ const el = {
   periodicRefresh: document.getElementById("periodic-refresh"),
   periodicRefreshControl: document.getElementById("periodic-refresh-control"),
   displayLimit: document.getElementById("display-limit"),
+  jumpToLatest: document.getElementById("jump-to-latest"),
   progress: document.getElementById("sync-progress"),
   progressFill: document.getElementById("progress-fill"),
   progressText: document.getElementById("progress-text"),
@@ -268,7 +271,7 @@ async function loadCandles() {
 
   state.loaded = data.candles || [];
   applySlice();
-  if (state.bars.length) chart.timeScale().fitContent();
+  frameDefaultZoom();
   renderHeader();
 }
 
@@ -281,6 +284,7 @@ function applySlice() {
   applyPriceFormat();
   candleSeries.setData(state.bars);
   el.empty.classList.toggle("hidden", state.bars.length > 0);
+  el.jumpToLatest.disabled = state.bars.length === 0;
   recomputeIndicators();
 }
 
@@ -306,7 +310,24 @@ function changeDisplayLimit(raw) {
   setActiveTool(null);
   renderChartTools();
   applySlice();
-  if (state.bars.length) chart.timeScale().fitContent();
+  frameDefaultZoom();
+}
+
+/** Frame the most recent bars on a fresh view. Reads only `state.bars` — no fetch. */
+function frameDefaultZoom() {
+  const timeScale = chart.timeScale();
+  const rightOffset = timeScale.options().rightOffset ?? 0;
+  const range = defaultVisibleLogicalRange(state.bars.length, rightOffset);
+  if (range) timeScale.setVisibleLogicalRange(range);
+}
+
+function jumpToLatest() {
+  if (!state.bars.length) return;
+  const timeScale = chart.timeScale();
+  const rightOffset = timeScale.options().rightOffset ?? 0;
+  // scrollToRealTime() is always animated and can stop short when the chart is
+  // still settling; scrollToPosition preserves bar spacing instantly.
+  timeScale.scrollToPosition(rightOffset, false);
 }
 
 /* ---------- Indicators ---------- */
@@ -431,46 +452,6 @@ function visibleSymbols() {
     .map((entry) => entry.symbol);
 }
 
-function formatPct(value) {
-  if (value == null || Number.isNaN(value)) return "—";
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function renderMarks(marks, reasons) {
-  if (!marks) return "";
-  const title = reasons?.length
-    ? reasons.map((r) => `${r.rule}: ${r.points}`).join("\n")
-    : "";
-  const dots = Array.from({ length: marks }, () => '<span class="screener-mark"></span>').join("");
-  return `<span class="screener-marks" title="${escapeHtml(title)}">${dots}</span>`;
-}
-
-function renderScreenerRow(symbol) {
-  const result = state.screenerScores[symbol.xtb_symbol];
-  if (!result) return "";
-
-  let marks = "";
-  let detail = "";
-  if (result.status === "not-screened") {
-    detail = `<div class="screener-state">not screened</div>`;
-  } else if (result.status === "insufficient-history") {
-    detail = `<div class="screener-state">insufficient history</div>`;
-  } else {
-    marks = renderMarks(result.marks, result.reasons);
-    const range = formatPct(result.rangePct);
-    const position = formatPct(result.positionPct);
-    detail = `<div class="screener-figures">30d range ${range} · position ${position}</div>`;
-  }
-
-  return `
-    <div class="symbol-top">
-      <span class="symbol-code">${escapeHtml(symbol.xtb_symbol)}${marks}</span>
-      <span class="symbol-class">${escapeHtml(symbol.asset_class)}</span>
-    </div>
-    <div class="symbol-name" title="${escapeHtml(symbol.name)}">${escapeHtml(symbol.name)}</div>
-    ${detail}`;
-}
-
 function renderList() {
   const items = visibleSymbols();
   el.list.innerHTML = "";
@@ -489,7 +470,7 @@ function renderList() {
       ? `${symbol.total_bars.toLocaleString()} bars · ${relativeTime(symbol.last_sync_utc)}`
       : "never synced";
 
-    const screener = renderScreenerRow(symbol);
+    const screener = renderScreenerRow(symbol, state.screenerScores[symbol.xtb_symbol]);
     if (screener) {
       li.innerHTML = `${screener}
       <div class="symbol-meta">
@@ -767,6 +748,7 @@ el.assetFilter.addEventListener("change", onFilterChange);
 el.sortOrder.addEventListener("change", onFilterChange);
 el.compatibleOnly.addEventListener("change", onFilterChange);
 el.displayLimit.addEventListener("change", () => changeDisplayLimit(el.displayLimit.value));
+el.jumpToLatest.addEventListener("click", jumpToLatest);
 el.syncAll.addEventListener("click", () => startSync(null));
 el.syncSelected.addEventListener("click", () =>
   startSync(state.selected ? [state.selected] : null),

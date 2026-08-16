@@ -31,6 +31,7 @@ node tests/js/run_mt5math.mjs    # MT5 EMA helpers (dev-time only)
 node tests/js/run_measure.mjs    # ruler measurement math (dev-time only)
 node tests/js/run_settings.mjs   # persisted settings + display limit (dev-time only)
 node tests/js/run_scroll_lock.mjs # chart-tool drag-pan suppression + undo (dev-time only)
+node tests/js/run_viewport.mjs   # default chart framing (dev-time only)
 node tests/js/run_screener.mjs    # accumulation screener rules (dev-time only)
 ```
 
@@ -69,16 +70,28 @@ A repeat sync requests only from just before the newest stored bar, so its cost
 does not grow with how deep the series has become. `--full` re-pulls each
 timeframe's whole fetch window; bars older than that window survive it.
 
-## Chart display limit
+## Chart display limit and default zoom
 
-How much you *look at* is separate from how much is fetched, and it is yours to
-set: the **bars** field in the toolbar takes a positive whole number or the word
-`all`, and defaults to the 5,000 most recent bars on every timeframe. Changing
-it re-slices the bars already in the browser — there is no refetch, and a lower
-limit does not make the page load faster (the limit bounds drawing, not
+How much is *available* to pan across is separate from how much is *visible* at
+once, and from how much is fetched.
+
+The **bars** field in the toolbar bounds availability: a positive whole number or
+the word `all`, defaulting to the 5,000 most recent bars on every timeframe.
+Changing it re-slices the bars already in the browser — there is no refetch, and
+a lower limit does not make the page load faster (the limit bounds drawing, not
 downloading). Zero, a negative number, and anything that is not a number are
 refused, leaving the previous limit in force. Because a measurement's anchors
 may fall outside the new view, changing the limit discards a drawn measurement.
+
+**Zoom** bounds visibility: whenever a series is presented afresh — selecting an
+instrument, switching timeframe, changing the display limit, or reloading after a
+sync — the chart frames the 200 most recent bars of the displayed slice rather
+than fitting the whole slice. A series with 200 bars or fewer is shown in full.
+Zoom is not persisted across reloads.
+
+The **Latest** button in the toolbar scrolls back to the newest bar without
+changing the current zoom. It reads only bars already in memory and never
+triggers a fetch.
 
 ### What the browser remembers
 
@@ -91,7 +104,8 @@ a browser that denies storage just runs on defaults.
 
 Sync state is deliberately excluded, so a reload can never resume fetching:
 **full refresh** and **auto 15m** both come back off. Measurements and zoom
-position are not restored either. None of this travels with the exported data.
+position are not restored either — the restored instrument and timeframe open on
+the default 200-bar framing instead. None of this travels with the exported data.
 
 ## Periodic refresh (dev mode only)
 

@@ -7,6 +7,7 @@
  */
 
 import {
+  barIntervalSeconds,
   formatElapsed,
   measure,
   measurementLines,
@@ -57,6 +58,27 @@ check("nearestBarIndex after series", nearestBarIndex(bars, BASE + 99 * DAY), 39
 check("nearestBarIndex rounds down", nearestBarIndex(bars, BASE + 4 * DAY + HOUR), 4);
 check("nearestBarIndex rounds up", nearestBarIndex(bars, BASE + 5 * DAY - HOUR), 5);
 check("nearestBarIndex single bar", nearestBarIndex([bars[0]], BASE + 99 * DAY), 0);
+
+/* ---------- barIntervalSeconds ---------- */
+
+check("barIntervalSeconds daily series", barIntervalSeconds(bars), DAY);
+
+const weekendTail = Array.from({ length: 10 }, (_, i) => ({
+  time: BASE + i * DAY,
+  open: 100,
+  high: 101,
+  low: 99,
+  close: 100,
+}));
+weekendTail.push({
+  time: weekendTail[weekendTail.length - 1].time + 3 * DAY,
+  open: 100,
+  high: 101,
+  low: 99,
+  close: 100,
+});
+check("barIntervalSeconds ignores weekend tail gap", barIntervalSeconds(weekendTail), DAY);
+check("barIntervalSeconds too short", barIntervalSeconds([bars[0]]), null);
 
 /* ---------- upward measurement ---------- */
 
@@ -111,6 +133,44 @@ const sameBar = measure(
 check("same-bar barCount", sameBar.barCount, 1);
 check("same-bar elapsedSeconds", sameBar.elapsedSeconds, 0);
 check("same-bar label line 2", measurementLines(sameBar, instrument)[1], "1 bar · 0m");
+
+/* ---------- projected end anchor ---------- */
+
+const lastBar = bars[bars.length - 1];
+const fromLastProjected = measure(
+  bars,
+  { time: lastBar.time, price: lastBar.close },
+  { time: lastBar.time + 5 * DAY, price: 110, barsAhead: 5 },
+);
+check("projected from last barCount", fromLastProjected.barCount, 6);
+check("projected from last elapsed", fromLastProjected.elapsedSeconds, 5 * DAY);
+check("projected from last anchorTimeTo", fromLastProjected.anchorTimeTo, lastBar.time + 5 * DAY);
+
+const spanHistoryProjected = measure(
+  bars,
+  { time: BASE + 30 * DAY, price: 130 },
+  { time: lastBar.time + 3 * DAY, price: 125, barsAhead: 3 },
+);
+check("span history projected barCount", spanHistoryProjected.barCount, 13);
+checkClose("span history projected priceChange", spanHistoryProjected.priceChange, -5);
+checkClose("span history projected percentChange", spanHistoryProjected.percentChange, -5 / 130 * 100);
+
+const projectedDown = measure(
+  bars,
+  { time: BASE + 35 * DAY, price: 140 },
+  { time: lastBar.time + 2 * DAY, price: 130, barsAhead: 2 },
+);
+check("projected down direction", projectedDown.direction, "down");
+checkClose("projected down priceChange", projectedDown.priceChange, -10);
+check("projected down barCount", projectedDown.barCount, 7);
+
+const projectedWithoutInterval = measure(
+  [bars[0]],
+  { time: bars[0].time, price: 100 },
+  { time: bars[0].time + 5 * DAY, price: 110, barsAhead: 5 },
+);
+check("projected without interval barCount", projectedWithoutInterval.barCount, 1);
+check("projected without interval elapsed", projectedWithoutInterval.elapsedSeconds, 0);
 
 /* ---------- flat move ---------- */
 
