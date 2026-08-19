@@ -32,6 +32,10 @@ SUFFIX_MAP: dict[str, tuple[str, str, str]] = {
     ".FI": ("Nasdaq Helsinki", "EUR", ".HE"),
     ".UK": ("London Stock Exchange", "GBP", ".L"),
     ".US": ("NYSE / NASDAQ", "USD", ""),
+    ".BE": ("Euronext Brussels", "EUR", ".BR"),
+    ".ES": ("BME Madrid", "EUR", ".MC"),
+    ".NO": ("Oslo Børs", "NOK", ".OL"),
+    ".SE": ("Nasdaq Stockholm", "SEK", ".ST"),
 }
 
 
@@ -41,6 +45,8 @@ class ReportInstrument:
     name: str = ""
     category: str = ""
     max_price_decimals: int = 0
+    #: Comma-separated fields after the ticker on a shortlist line (hints only).
+    label_hints: str = ""
 
 
 @dataclass
@@ -226,6 +232,23 @@ def load_catalog_symbols(catalog_path: Path) -> set[str]:
         }
 
 
+def collect_from_shortlist(path: Path, collected: CollectedReport) -> None:
+    """Parse a plain-text shortlist: one ticker per line, comma-separated hints."""
+    text = path.read_text(encoding="utf-8")
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        parts = [part.strip() for part in stripped.split(",")]
+        ticker = parts[0]
+        if not ticker:
+            continue
+        hints = ", ".join(parts[1:]) if len(parts) > 1 else ""
+        entry = collected.instruments.setdefault(ticker, ReportInstrument(ticker=ticker))
+        if hints and not entry.label_hints:
+            entry.label_hints = hints
+
+
 def collect_from_workbook(path: Path, collected: CollectedReport) -> None:
     for sheet_name, rows in iter_sheet_rows(path):
         header = find_sheet_header(rows)
@@ -276,6 +299,8 @@ def collect_from_reports(reports_dir: Path) -> CollectedReport:
     collected = CollectedReport()
     for path in sorted(reports_dir.glob("*.xlsx")):
         collect_from_workbook(path, collected)
+    for path in sorted(reports_dir.glob("*.txt")):
+        collect_from_shortlist(path, collected)
     return collected
 
 
@@ -335,10 +360,13 @@ def report_missing(
     )
     for inst in missing:
         fields = guess_catalog_fields(inst.ticker, inst)
-        print(
-            f"# report label: {inst.name!r}; category: {inst.category or '?'}",
-            file=stream,
-        )
+        if inst.label_hints:
+            print(f"# shortlist hints: {inst.label_hints!r}", file=stream)
+        else:
+            print(
+                f"# report label: {inst.name!r}; category: {inst.category or '?'}",
+                file=stream,
+            )
         print(format_proposed_row(fields), file=stream)
     return collected, missing
 

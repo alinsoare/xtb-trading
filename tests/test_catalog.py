@@ -122,9 +122,9 @@ class TestLoading:
     def test_seed_catalog_is_valid(self):
         # The checked-in catalog must always load.
         instruments = load_catalog()
-        assert len(instruments) == 64
+        assert len(instruments) == 133
         assert any(i.enabled for i in instruments)
-        assert sum(1 for i in instruments if i.enabled) == 62
+        assert sum(1 for i in instruments if i.enabled) == 131
         disabled = [i for i in instruments if not i.enabled]
         assert {i.xtb_symbol for i in disabled} == {"GLD.US", "OOEA.DE"}
 

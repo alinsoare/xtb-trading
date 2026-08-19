@@ -1,0 +1,524 @@
+{
+  "verified": [],
+  "rejected": [
+    {
+      "xtb_symbol": "4UBI.DE",
+      "tickers_tried": [
+        "4UBI.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "4UBQ.DE",
+      "tickers_tried": [
+        "4UBQ.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "6AQQ.DE",
+      "tickers_tried": [
+        "6AQQ.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "6PSA.DE",
+      "tickers_tried": [
+        "6PSA.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "6TVM.DE",
+      "tickers_tried": [
+        "6TVM.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "AJI.DE",
+      "tickers_tried": [
+        "AJI.DE",
+        "AJI.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ARGX.BE",
+      "tickers_tried": [
+        "ARGX.BR"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ASI1.DE",
+      "tickers_tried": [
+        "ASI1.DE",
+        "ASI1.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ASM.NL",
+      "tickers_tried": [
+        "ASM.AS"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "BNKE.FR",
+      "tickers_tried": [
+        "BNKE.PA"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "C7A0.DE",
+      "tickers_tried": [
+        "C7A0.DE",
+        "300750.SZ"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "CANEUA.DE",
+      "tickers_tried": [
+        "CANEUA.DE"
+      ],
+      "reason": "no Yahoo ticker with bars found"
+    },
+    {
+      "xtb_symbol": "CBRS.DE",
+      "tickers_tried": [
+        "CBRS.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "D500.DE",
+      "tickers_tried": [
+        "D500.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "D5BH.DE",
+      "tickers_tried": [
+        "D5BH.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "D5BM.DE",
+      "tickers_tried": [
+        "D5BM.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "EQQB.DE",
+      "tickers_tried": [
+        "EQQB.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ETDD.FR",
+      "tickers_tried": [
+        "ETDD.PA"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "EUN2.DE",
+      "tickers_tried": [
+        "EUN2.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "F500.DE",
+      "tickers_tried": [
+        "F500.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "FUSA.DE",
+      "tickers_tried": [
+        "FUSA.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "FUSD.DE",
+      "tickers_tried": [
+        "FUSD.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "FUSR.DE",
+      "tickers_tried": [
+        "FUSR.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "H412.DE",
+      "tickers_tried": [
+        "H412.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "HIA1.DE",
+      "tickers_tried": [
+        "HIA1.DE",
+        "HIA1.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "HOT.DE",
+      "tickers_tried": [
+        "HOT.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "I500.DE",
+      "tickers_tried": [
+        "I500.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "IEVL.UK",
+      "tickers_tried": [
+        "IEVL.L"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "IQQD.DE",
+      "tickers_tried": [
+        "IQQD.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "IUSA.DE",
+      "tickers_tried": [
+        "IUSA.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "LLY.DE",
+      "tickers_tried": [
+        "LLY.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "LOTB.BE",
+      "tickers_tried": [
+        "LOTB.BR"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "LYXIB.ES",
+      "tickers_tried": [
+        "LYXIB.MC"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "MIE1.DE",
+      "tickers_tried": [
+        "MIE1.DE",
+        "MIE1.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "MIH.DE",
+      "tickers_tried": [
+        "MIH.DE",
+        "MIH.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "MSE.FR",
+      "tickers_tried": [
+        "MSE.PA"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "MUR1.DE",
+      "tickers_tried": [
+        "MUR1.DE",
+        "MUR1.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "NADQ.DE",
+      "tickers_tried": [
+        "NADQ.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "NDXEX.DE",
+      "tickers_tried": [
+        "NDXEX.DE",
+        "NDX1.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "P500.DE",
+      "tickers_tried": [
+        "P500.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "PE500.FR",
+      "tickers_tried": [
+        "PE500.PA"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "QDVA.DE",
+      "tickers_tried": [
+        "QDVA.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "QDVB.DE",
+      "tickers_tried": [
+        "QDVB.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "QDVD.DE",
+      "tickers_tried": [
+        "QDVD.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "QDVE.DE",
+      "tickers_tried": [
+        "QDVE.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SAABB.SE",
+      "tickers_tried": [
+        "SAABB.ST",
+        "SAAB-B.ST"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SALM.NO",
+      "tickers_tried": [
+        "SALM.OL"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SGAS.DE",
+      "tickers_tried": [
+        "SGAS.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SMSEUR.DE",
+      "tickers_tried": [
+        "SMSEUR.DE",
+        "SMSE.L"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SPPY.DE",
+      "tickers_tried": [
+        "SPPY.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SPY5.DE",
+      "tickers_tried": [
+        "SPY5.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SPYF.DE",
+      "tickers_tried": [
+        "SPYF.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SX5EEX.DE",
+      "tickers_tried": [
+        "SX5EEX.DE",
+        "EXXY.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SXR8.DE",
+      "tickers_tried": [
+        "SXR8.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SXRT.DE",
+      "tickers_tried": [
+        "SXRT.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "SXRV.DE",
+      "tickers_tried": [
+        "SXRV.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "UBU9.DE",
+      "tickers_tried": [
+        "UBU9.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "UBUT.DE",
+      "tickers_tried": [
+        "UBUT.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "VAN.DE",
+      "tickers_tried": [
+        "VAN.DE",
+        "VAN.F"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "VUAA.DE",
+      "tickers_tried": [
+        "VUAA.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "VUSA.DE",
+      "tickers_tried": [
+        "VUSA.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "VX1.DE",
+      "tickers_tried": [
+        "VX1.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "WTD9.DE",
+      "tickers_tried": [
+        "WTD9.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "WTDM.DE",
+      "tickers_tried": [
+        "WTDM.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "XESD.DE",
+      "tickers_tried": [
+        "XESD.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "XMIB.DE",
+      "tickers_tried": [
+        "XMIB.DE",
+        "XMIB.MI"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "XNAS.DE",
+      "tickers_tried": [
+        "XNAS.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "XUEN.DE",
+      "tickers_tried": [
+        "XUEN.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "XUTC.DE",
+      "tickers_tried": [
+        "XUTC.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ZPDE.DE",
+      "tickers_tried": [
+        "ZPDE.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ZPDI.DE",
+      "tickers_tried": [
+        "ZPDI.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    },
+    {
+      "xtb_symbol": "ZPDT.DE",
+      "tickers_tried": [
+        "ZPDT.DE"
+      ],
+      "reason": "verified at Yahoo but xStation name not found on XTB website"
+    }
+  ],
+  "catalog_rejected": [],
+  "kept_count": 64
+}

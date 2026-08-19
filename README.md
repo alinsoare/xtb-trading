@@ -293,19 +293,32 @@ git cat-file blob FETCH_HEAD:market.db > data/market.db
 ## Adding a symbol
 
 Account statements exported from XTB live in `data/xtb-reports/` (one or more
-`*.xlsx` files). To see which instruments they name that the catalog does not
+`*.xlsx` files, plus optional plain-text shortlists such as `ETFs.txt` and
+`STCs.txt`). To see which instruments they name that the catalog does not
 yet cover, run:
 
 ```bash
 uv run python tools/import_xtb_report_symbols.py
 ```
 
-The tool scans every sheet of every report, deduplicates tickers, and prints
-proposed CSV rows for anything missing from `data/symbols.csv`. It **never
-writes the catalog** — completing and committing rows is manual work. The
-report's Instrument column is a short display label, not the verbatim xStation
-name: copy `xtb_name` from xStation when filling in a row, because CFD
-detection reads that field.
+The tool scans every workbook sheet and every `*.txt` shortlist, deduplicates
+tickers, and prints proposed CSV rows for anything missing from
+`data/symbols.csv`. It **never writes the catalog** — completing and committing
+rows is manual work. The report's Instrument column and the shortlist's
+comma-separated hints are maintainer notes, not the verbatim xStation name:
+copy `xtb_name` from xStation when filling in a row, because CFD detection
+reads that field.
+
+Before enabling a new row, verify its Yahoo ticker returns daily bars:
+
+```bash
+uv run python tools/verify_catalog_symbols.py --source candidates
+uv run python tools/verify_catalog_symbols.py              # sweep whole catalog
+```
+
+Both tools hash `data/symbols.csv` before and after the run and exit non-zero
+if the file changed. A candidate whose ticker cannot be confirmed at Yahoo is
+not added; record it in the change's `rejected-candidates.md` instead.
 
 Add a row to `data/symbols.csv` and verify the ticker against Yahoo before
 enabling it — XTB and Yahoo symbols differ in exchange suffix (`.UK` → `.L`,

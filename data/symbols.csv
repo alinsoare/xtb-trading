@@ -38,7 +38,7 @@ JMLP.DE,Alerian Midstream Energy Dividend UCITS ETF,JMLP.DE,Alerian Midstream En
 LHTC.DE,Amundi STOXX Europe 600 Healthcare UCITS ETF,LHTC.DE,Lyxor Index Fund - Lyxor Stoxx Europe 600 Healthcare UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
 LI7U.DE,Global X Lithium & Battery Tech UCITS ETF,LI7U.DE,Global X Lithium & Battery Tech UCITS ETF,ETF,REAL,XETRA,EUR,0.001,1,true
 NESTE.FI,Neste Oyj,NESTE.HE,Neste Oyj,STOCK,REAL,Nasdaq Helsinki,EUR,0.01,1,true
-OOEA.DE,WisdomTree Brent Crude Oil ETC,OOEA.DE,WisdomTree Brent Crude Oil,ETC,REAL,XETRA,EUR,0.001,1,false
+OOEA.DE,WisdomTree Brent Crude Oil ETC,BRNT.L,WisdomTree Brent Crude Oil,ETC,REAL,XETRA,USD,0.001,1,false
 S5SD.DE,UBS S&P 500 Scored & Screened UCITS ETF,S5SD.DE,UBS S&P 500 Scored & Screened UCITS ETF USD dis,ETF,REAL,XETRA,EUR,0.001,1,true
 SPYN.DE,SPDR MSCI Europe Energy UCITS ETF,SPYN.DE,State Street SPDR MSCI Europe Energy UCITS ETF,ETF,REAL,XETRA,EUR,0.1,1,true
 SXR2.DE,iShares MSCI Canada UCITS ETF,SXR2.DE,iShares VII PLC - iShares MSCI Canada ETF USD Acc,ETF,REAL,XETRA,EUR,0.1,1,true
@@ -63,3 +63,72 @@ XB4A.DE,"Xtrackers ATX UCITS ETF 1C (Acc, EUR)",XB4A.DE,Xtrackers ATX UCITS ETF 
 XESP.DE,"Xtrackers Spain UCITS ETF (Acc, EUR)",XESP.DE,Xtrackers Spain UCITS ETF 1C,ETF,REAL,XETRA,EUR,0.01,1,true
 FLXK.DE,"Franklin FTSE Korea UCITS (Acc, EUR)",FLXK.DE,Franklin FTSE Korea UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
 VVSM.DE,"VanEck Vectors Semiconductor UCITS (Acc, EUR)",VVSM.DE,VanEck Semiconductor UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+4UBI.DE,"UBS(Irl)ETFplc MSCI USA Soc Rsp UCITS (Acc, EUR)",4UBI.DE,UBS MSCI USA Socially Responsible UCITS ETF USD acc,ETF,REAL,XETRA,EUR,0.01,1,true
+4UBQ.DE,"UBS (Irl) plc S&P 500 ESG UCITS (Acc, EUR)",4UBQ.DE,UBS S&P 500 Scored & Screened UCITS ETF USD acc,ETF,REAL,XETRA,EUR,0.01,1,true
+6AQQ.DE,"Amundi NASDAQ-100 UCITS (Acc, EUR)",6AQQ.DE,Amundi Index Solutions - Amundi Nasdaq-100 Swap ETF EUR Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+6PSA.DE,"Invesco FTSE RAFI US 1000 UCITS (Dist, EUR)",6PSA.DE,Invesco RAFI US Fundamental Value UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+6TVM.DE,"Lyxor S&P 500 UCITS (Dist, EUR)",6TVM.DE,Amundi Core S&P 500 Swap UCITS ETF USD Dist,ETF,REAL,XETRA,EUR,0.01,1,true
+AJI.DE,Ajinomoto Co Inc,AJI.F,"Ajinomoto Co., Inc.",STOCK,REAL,XETRA,EUR,0.01,1,true
+ARGX.BE,Argenx SE,ARGX.BR,argenx SE,STOCK,REAL,Euronext Brussels,EUR,0.01,1,true
+ASI1.DE,Asics Corp,ASI1.F,ASICS Corporation,STOCK,REAL,XETRA,EUR,0.01,1,true
+BNKE.FR,Amundi Euro Stoxx Banks UCITS ETF (Acc EUR),BNKE.PA,Amundi Euro Stoxx Banks UCITS ETF Acc,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+C7A0.DE,Contemporary Amperex Technology Co Ltd,300750.SZ,"Contemporary Amperex Technology Co., Limited",STOCK,REAL,XETRA,CNY,0.01,1,true
+CBRS.DE,First Trust Nasdaq Cybersecurity UCITS (Acc EUR),CBRS.DE,First Trust Nasdaq Cybersecurity UCITS ETF Class A USD Accumulation,ETF,REAL,XETRA,EUR,0.01,1,true
+D500.DE,"Invesco S&P 500 UCITS (Dist, EUR)",D500.DE,Invesco S&P 500 UCITS ETF (Dist),ETF,REAL,XETRA,EUR,0.01,1,true
+D5BH.DE,"Xtrackers MSCI Canada ESG Screened UCITS (Acc, EUR)",D5BH.DE,Xtrackers MSCI Canada Screened UCITS ETF 1C,ETF,REAL,XETRA,EUR,0.01,1,true
+D5BM.DE,"Xtrackers S&P 500 Swap UCITS (Acc, EUR)",D5BM.DE,Xtrackers S&P 500 Swap UCITS ETF 1C,ETF,REAL,XETRA,EUR,0.01,1,true
+EQQB.DE,"Invesco EQQQ NASDAQ-100 UCITS (Acc, EUR)",EQQB.DE,Invesco EQQQ NASDAQ-100 UCITS ETF Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+ETDD.FR,Bnp Paribas Easy Euro Stoxx 50 UCITS ETF (Acc EUR),ETDD.PA,BNP Paribas Easy Euro Stoxx 50 UCITS ETF EUR C,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+EUN2.DE,iShares EURO STOXX 50 UCITS ETF (Dist EUR),EUN2.DE,iShares Core EURO STOXX 50 UCITS ETF EUR (Dist),ETF,REAL,XETRA,EUR,0.01,1,true
+F500.DE,"Amundi S&P 500 ESG UCITS (Acc, EUR)",F500.DE,Amundi S&P 500 Screened UCITS ETF - Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+FUSA.DE,"Fidelity US Quality Income UCITS (Acc, EUR)",FUSA.DE,Fidelity US Quality Income UCITS ETF Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+FUSD.DE,Fidelity US Quality Income UCITS (Dist EUR),FUSD.DE,Fidelity US Quality Income UCITS ETF Inc,ETF,REAL,XETRA,EUR,0.01,1,true
+FUSR.DE,"Fidelity Sust Research Enh US Eq UCITS (Acc, EUR)",FUSR.DE,Fidelity US Equity Research Enhanced UCITS ETF USD Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+H412.DE,"HSBC USA Sustainable Equity UCITS (Acc, EUR)",H412.DE,HSBC USA Screened Equity UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+HIA1.DE,Hitachi Ltd,HIA1.F,"Hitachi, Ltd.",STOCK,REAL,XETRA,EUR,0.01,1,true
+I500.DE,iShares S&P 500 Swap UCITS (Acc EUR),I500.DE,iShares S&P 500 Swap UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+IEVL.UK,iShares Edge MSCI Europe Value Factor UCITS ETF (Acc EUR),IEVL.L,iShares Edge MSCI Europe Value Factor UCITS ETF EUR (Acc),ETF,REAL,London Stock Exchange,EUR,0.01,1,true
+IQQD.DE,"iShares UK Dividend UCITS (Dist, EUR)",IQQD.DE,iShares UK Dividend UCITS ETF GBP (Dist),ETF,REAL,XETRA,EUR,0.01,1,true
+IUSA.DE,iShares S&P 500 UCITS ETF (Dist EUR),IUSA.DE,iShares Core S&P 500 UCITS ETF USD Dist,ETF,REAL,XETRA,EUR,0.01,1,true
+LLY.DE,Eli Lilly and Co,LLY.DE,Eli Lilly and Company,STOCK,REAL,XETRA,EUR,0.01,1,true
+LOTB.BE,Lotus Bakeries NV,LOTB.BR,Lotus Bakeries NV,STOCK,REAL,Euronext Brussels,EUR,0.01,1,true
+LYXIB.ES,Amundi IBEX35 UCITS ETF (Dist EUR),LYXIB.MC,Amundi IBEX 35 UCITS ETF,ETF,REAL,BME Madrid,EUR,0.01,1,true
+MIE1.DE,Mitsubishi Electric Corp,MIE1.F,Mitsubishi Electric Corporation,STOCK,REAL,XETRA,EUR,0.01,1,true
+MIH.DE,Mitsubishi Heavy Industries Ltd,MIH.F,"Mitsubishi Heavy Industries, Ltd.",STOCK,REAL,XETRA,EUR,0.01,1,true
+MSE.FR,Amundi Euro Stoxx 50 UCITS ETF (Dist EUR),MSE.PA,Amundi EURO STOXX 50 II UCITS ETF Acc,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+MUR1.DE,Murata Manufacturing Co Ltd,MUR1.F,"Murata Manufacturing Co., Ltd.",STOCK,REAL,XETRA,EUR,0.01,1,true
+NADQ.DE,"Lyxor Nasdaq-100 UCITS ETF - Acc (Dist, EUR)",NADQ.DE,Amundi Core Nasdaq-100 Swap UCITS ETF Dist,ETF,REAL,XETRA,EUR,0.01,1,true
+NDXEX.DE,"iShares NASDAQ-100® UCITS DE (Dist, EUR)",NDX1.DE,Nordex SE,STOCK,REAL,XETRA,EUR,0.01,1,true
+P500.DE,Invesco S&P 500 UCITS (Acc EUR),P500.DE,Invesco S&P 500 UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+PE500.FR,"Amundi PEA S&P 500 UCITS C/D (Acc, EUR)",PE500.PA,Amundi PEA S&P 500 Screened UCITS ETF - Acc,ETF,REAL,Euronext Paris,EUR,0.01,1,true
+QDVA.DE,"iShares Edge MSCI USA Mmntm Fctr UCITS (Acc, EUR)",QDVA.DE,iShares Edge MSCI USA Momentum Factor UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.01,1,true
+QDVB.DE,"iShares Edge MSCI USA Qual Fctr UCITS (Acc, EUR)",QDVB.DE,iShares Edge MSCI USA Quality Factor UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.01,1,true
+QDVD.DE,"iShares MSCI USA Quality Div ESG UCITS (Dist, EUR)",QDVD.DE,iShares MSCI USA Quality Dividend Advanced UCITS ETF USD (Dist),ETF,REAL,XETRA,EUR,0.01,1,true
+QDVE.DE,iShares S&P 500 Information Technology Sector UCITS ETF (Acc EUR),QDVE.DE,iShares S&P 500 Information Technology Sector UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.01,1,true
+SAABB.SE,Saab AB - class B,SAAB-B.ST,Saab AB (publ),STOCK,REAL,Nasdaq Stockholm,SEK,0.01,1,true
+SALM.NO,Salmar ASA,SALM.OL,SalMar ASA,STOCK,REAL,Oslo Børs,NOK,0.01,1,true
+SGAS.DE,"iShares MSCI USA ESG Screened UCITS (Acc, EUR)",SGAS.DE,iShares MSCI USA Screened UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.01,1,true
+SMSEUR.DE,"Invesco MSCI ope UCITS (Acc, EUR)",SMSE.L,Leverage Shares -1x Microsoft ETP Securities,STOCK,REAL,XETRA,EUR,0.001,1,true
+SPPY.DE,"SPDR S&P 500 ESG Leaders UCITS (Acc, EUR)",SPPY.DE,State Street SPDR S&P 500 Leaders UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+SPY5.DE,"SPDR S&P 500 UCITS ETF (Dist, EUR)",SPY5.DE,State Street SPDR S&P 500 UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+SPYF.DE,"SPDR FTSE UK All Share UCITS (Acc, EUR)",SPYF.DE,State Street SPDR FTSE UK All Share UCITS ETF Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+SX5EEX.DE,iShares EURO STOXX 50 UCITS ETF DE (Dist EUR),EXXY.DE,iShares Diversified Commodity Swap UCITS ETF (DE),ETF,REAL,XETRA,EUR,0.01,1,true
+SXR8.DE,iShares Core S&P 500 UCITS ETF (Acc EUR),SXR8.DE,iShares Core S&P 500 UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.01,1,true
+SXRT.DE,iShares Core EURO STOXX 50 UCITS ETF (Acc EUR),SXRT.DE,iShares VII PLC - iShares Core EURO STOXX 50 ETF EUR Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+SXRV.DE,iShares NASDAQ 100 UCITS ETF (Acc EUR),SXRV.DE,iShares NASDAQ 100 UCITS ETF USD (Acc),ETF,REAL,XETRA,EUR,0.01,1,true
+UBU9.DE,"UBS (Irl) plc S&P 500 UCITS (Dist, EUR)",UBU9.DE,UBS Core S&P 500 UCITS ETF USD dis,ETF,REAL,XETRA,EUR,0.01,1,true
+UBUT.DE,"UBS(Irl)ETFplc Factor MSCI USA Quality UETF (Dist, EUR)",UBUT.DE,UBS Factor MSCI USA Quality Screened UCITS ETF USD dis,ETF,REAL,XETRA,EUR,0.01,1,true
+VAN.DE,Advantest Corp,VAN.F,Advantest Corporation,STOCK,REAL,XETRA,EUR,0.01,1,true
+VUAA.DE,"Vanguard S&P 500 UCITS ETF USD (Acc, EUR)",VUAA.DE,Vanguard S&P 500 UCITS ETF USD Accumulation,ETF,REAL,XETRA,EUR,0.01,1,true
+VUSA.DE,"Vanguard S&P 500 UCITS ETF USD (Dist, EUR)",VUSA.DE,Vanguard S&P 500 UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+VX1.DE,Vertex Pharmaceuticals Inc,VX1.DE,Vertex Pharmaceuticals Incorporated,STOCK,REAL,XETRA,EUR,0.01,1,true
+WTD9.DE,"WisdomTree US Equity Income UCITS ETF (Acc, EUR)",WTD9.DE,WisdomTree US High Dividend UCITS ETF - Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+WTDM.DE,"WisdomTree US Quality Div Growth UCITS (Acc, EUR)",WTDM.DE,WisdomTree US Quality Dividend Growth UCITS ETF - USD Acc,ETF,REAL,XETRA,EUR,0.01,1,true
+XESD.DE,"Xtrackers Spain UCITS (Dist, EUR)",XESD.DE,Xtrackers Spain UCITS ETF 1D,ETF,REAL,XETRA,EUR,0.01,1,true
+XMIB.DE,"Xtrackers FTSE MIB UCITS 1D (Dist, EUR)",XMIB.MI,Xtrackers FTSE MIB UCITS ETF 1D,ETF,REAL,XETRA,EUR,0.01,1,true
+XNAS.DE,Xtrackers NASDAQ 100 UCITS (Acc EUR),XNAS.DE,Xtrackers NASDAQ 100 UCITS ETF 1C,ETF,REAL,XETRA,EUR,0.01,1,true
+XUEN.DE,"Xtrackers MSCI USA Energy UCITS (Dist, EUR)",XUEN.DE,Xtrackers MSCI USA Energy UCITS ETF 1D,ETF,REAL,XETRA,EUR,0.01,1,true
+XUTC.DE,"Xtrackers MSCI USA Information Tech UCITS 1D (Dist, EUR)",XUTC.DE,Xtrackers MSCI USA Information Technology UCITS ETF 1D,ETF,REAL,XETRA,EUR,0.01,1,true
+ZPDE.DE,"SPDR S&P US Energy Select Sector UCITS (Acc, EUR)",ZPDE.DE,State Street SPDR S&P U.S. Energy Select Sector UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+ZPDI.DE,"SPDR S&P US Industrial Select Sector UCITS (Acc, EUR)",ZPDI.DE,State Street SPDR S&P U.S. Industrials Select Sector UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
+ZPDT.DE,"SPDR S&P US Technology Select Sector UCITS (Acc, EUR)",ZPDT.DE,State Street SPDR S&P U.S. Technology Select Sector UCITS ETF,ETF,REAL,XETRA,EUR,0.01,1,true
