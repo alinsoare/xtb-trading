@@ -19,5 +19,5 @@
 
 ## 4. Post-merge activation (needs the repository)
 
-- [ ] 4.1 After the change lands on the default branch, confirm the schedule is registered on the workflow's Actions page
-- [ ] 4.2 After the first scheduled run, verify the `data` branch holds a fresh snapshot commit, the Pages deployment advanced, and the published site's snapshot timestamp moved
+- [x] 4.1 After the change lands on the default branch, confirm the schedule is registered on the workflow's Actions page
+- [x] 4.2 After the first scheduled run, verify the `data` branch holds a fresh snapshot commit, the Pages deployment advanced, and the published site's snapshot timestamp moved
