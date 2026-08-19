@@ -2,14 +2,17 @@
  *
  * Source: ~/daytrading/mt5/indicators/SMCTrading.mq5
  * Version: 3.23
- * Hash: 065e95609c6fffe1fc824777531f2c1fd237e8cdd07affdb7b40ebcf54388b7d
+ * Hash: 484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7
  *
  * Chronological, oldest-first. The newest stored bar plays MT5's forming bar 0.
  *
  * Sanctioned deviations (parity scoped to H4+ where skip filter is inert):
  * - InpLookbackBars cap dropped: every displayed bar is scanned.
- * - All detected zones are drawn (source history mode); no trend-bias filter.
+ * - All detected demand zones are drawn (source history mode); no trend-bias filter.
+ * - No show-history switch: full history is always displayed.
+ * - Supply zones are detected but never drawn (rendering deviation only).
  * - Skip-bar interval dropped: every bar is eligible on every timeframe.
+ * - Only the source's fresh-load path is reproduced (no incremental per-bar path).
  */
 
 import {
@@ -21,7 +24,8 @@ import { PIVOT_LABEL_COLOR, ZONE_PALETTE } from "./palette.js";
 import { registerIndicator } from "./registry.js";
 
 /* MT5 defaults. Dropped vs source: lookback cap (full-history scan), display/trend
- * filters (all zones drawn), skip-bar interval (parity scoped to H4+).
+ * filters (all demand zones drawn; no show-history switch), supply rendering
+ * (detected for parity, demand-only on chart), skip-bar interval (parity H4+).
  *
  * Verified parity: XAUUSD D1, 338 bars — 16/16 pivots and 13/13 zones exact.
  *
@@ -154,14 +158,25 @@ function detectBetweenPivots(
   return zones;
 }
 
-function getObValidityEndTime(ob, pivots, pending, closes, times, validityScanCap, n) {
+function getObValidityEndTime(
+  ob,
+  pivots,
+  pending,
+  bosOccurred,
+  closes,
+  times,
+  validityScanCap,
+  n,
+) {
   if (pivots.length < 2) return times[n - 1];
 
   const lastPivot = pivots[pivots.length - 1];
   const pendingTime = pending?.barTime ?? 0;
 
   if (ob.pivotEndTime === lastPivot.barTime) return times[n - 1];
-  if (pending && ob.pivotEndTime === pendingTime) return times[n - 1];
+  // Unreachable through the current search path (pending OBs need bosOccurred),
+  // but matches the source: open-ended only while a break is active.
+  if (bosOccurred && pending && ob.pivotEndTime === pendingTime) return times[n - 1];
 
   const firstPivot = pivots[ob.patternPivot1];
   const secondPivot = pivots[ob.patternPivot2];
@@ -331,6 +346,7 @@ export function obZones(bars, pointSize, params = OB_PARAMS, structure = null) {
       ob,
       pivots,
       struct.pending,
+      struct.bosOccurred,
       closes,
       times,
       params.validityScanCap,
@@ -360,6 +376,7 @@ registerIndicator({
     const { zones, structure, warning } = obZones(bars, pointSize);
     const drawables = [];
     for (const zone of zones) {
+      if (zone.direction !== "demand") continue;
       const color = OB_COLORS[zone.direction];
       drawables.push({
         type: "rect",

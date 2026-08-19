@@ -32,7 +32,7 @@ OUT_DIR = REPO / "tests" / "fixtures" / "ob"
 
 SOURCE_PATH = "~/daytrading/mt5/indicators/SMCTrading.mq5"
 SOURCE_VERSION = "3.23"
-SOURCE_HASH = "065e95609c6fffe1fc824777531f2c1fd237e8cdd07affdb7b40ebcf54388b7d"
+SOURCE_HASH = "484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7"
 
 DEFAULT_MT5_FILES = Path(
     "/home/alin/.mt5/drive_c/Program Files/MT5-Testing/MQL5/Files/ob_oracle"

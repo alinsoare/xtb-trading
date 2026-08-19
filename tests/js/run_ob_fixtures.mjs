@@ -9,7 +9,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { computeSwingStructure } from "../../web/indicators/ob-structure.js";
+import { computeSwingStructure, OB_STRUCTURE_SOURCE } from "../../web/indicators/ob-structure.js";
 import { obZones, OB_PARAMS } from "../../web/indicators/ob.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +112,13 @@ for (const file of files) {
   const name = fixture.name;
   const bars = fixture.bars;
   const params = jsParams(fixture.params);
+
+  if (fixture.source?.hash && fixture.source.hash !== OB_STRUCTURE_SOURCE.hash) {
+    fail(
+      name,
+      `fixture source hash ${fixture.source.hash} != port hash ${OB_STRUCTURE_SOURCE.hash}`,
+    );
+  }
 
   const structure = computeSwingStructure(bars, fixture.point_size, params);
   const actualPivots = structure.exportPivots();

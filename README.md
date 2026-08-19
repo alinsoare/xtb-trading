@@ -150,19 +150,22 @@ prove numeric conventions (EMA seeding, stochastic, warm-up warning). Space
 behaviour is covered separately by hand-checked cases in
 `tests/fixtures/fvg-spaces/`.
 
-**OB** is an Order Block scanner ported from `SMCTrading.mq5` v3.23. It marks
-the last opposing candle before an impulse that broke structure: demand zones in
-green, supply zones in pink, each labelled `OB`. Only the zones are drawn, but
-they rest on a full internal port of the source's swing-pivot detection,
+**OB** is an Order Block scanner ported from `SMCTrading.mq5` v3.23
+(sha256 `484d821d…`). It marks the last opposing candle before an impulse that
+broke structure: **demand zones only** are drawn in green, each labelled `OB`.
+Supply zones are still detected internally for MT5 parity but are not rendered.
+They rest on a full internal port of the source's swing-pivot detection,
 points-based confirmation, structural break tracking and impulse/pullback
 classification, none of which is rendered. The source's slow-RSI block is not
 ported at all — it is dead code there, computed but never read.
 
-Four deliberate deviations from `SMCTrading.mq5`, recorded in `OB_PARAMS`:
+Six deliberate deviations from `SMCTrading.mq5`, recorded in `OB_PARAMS`:
 
 - The lookback cap is dropped, so zones stay visible deep in history.
-- Every detected zone is drawn, matching the source's history mode rather than
-  its live view, which hides counter-trend zones and all but the newest swing.
+- Every detected **demand** zone is drawn, matching the source's history mode
+  rather than its live view, which hides counter-trend zones and all but the
+  newest swing. There is no show-history switch — full history is always on.
+- Supply zones are detected but never drawn (rendering deviation only).
 - The newest stored bar stands in for MT5's forming bar and never becomes a zone
   or a confirmed pivot, the same convention FVG follows.
 - The skip-bar interval is dropped: the source refuses pivots on bars opening in
@@ -170,6 +173,8 @@ Four deliberate deviations from `SMCTrading.mq5`, recorded in `OB_PARAMS`:
   data**. Parity is therefore claimed only at H4 and above, where that filter is
   inert in the source; on m15 and h1 the two read different bar sets and their
   zones can legitimately differ.
+- Only the source's fresh-load path is reproduced; incremental per-bar
+  refinements are not modelled.
 
 ### Regenerating the OB fixtures
 

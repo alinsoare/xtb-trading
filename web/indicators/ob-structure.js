@@ -2,7 +2,7 @@
  *
  * Source: ~/daytrading/mt5/indicators/SMCTrading.mq5
  * Version: 3.23
- * Hash: 065e95609c6fffe1fc824777531f2c1fd237e8cdd07affdb7b40ebcf54388b7d
+ * Hash: 484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7
  *
  * Chronological, oldest-first bar arrays. The newest stored bar plays MT5's
  * forming bar 0 and is excluded from confirmed-pivot and OB-candidate scans.
@@ -23,7 +23,7 @@ const DBL_MIN = -Number.MAX_VALUE;
 export const OB_STRUCTURE_SOURCE = {
   path: "~/daytrading/mt5/indicators/SMCTrading.mq5",
   version: "3.23",
-  hash: "065e95609c6fffe1fc824777531f2c1fd237e8cdd07affdb7b40ebcf54388b7d",
+  hash: "484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7",
 };
 
 function mt5ToJs(mt5Bar, n) {
@@ -217,16 +217,14 @@ function makeBreakState() {
   return {
     pivotCount: 0,
     lastBreakBarTime: 0,
-    lastStructEventPivotCount: -1,
-    hasLastStructEvent: false,
-    lastStructEventIsBOS: false,
     currentTrend: TREND_UNKNOWN,
     bosOccurred: false,
     bosSameTypeOccurred: false,
   };
 }
 
-function handleStructuralBreak(state, barTime, isUp) {
+function handleStructuralBreak(state, barTime, isUp, level) {
+  // level mirrors the source's break sites; read by no guard the port keeps.
   const pre = state.currentTrend;
   const isBOS =
     pre === TREND_UNKNOWN ? true : isUp ? pre === TREND_UP : pre === TREND_DOWN;
@@ -234,16 +232,6 @@ function handleStructuralBreak(state, barTime, isUp) {
     state.currentTrend = isUp ? TREND_UP : TREND_DOWN;
   }
   if (barTime > state.lastBreakBarTime) state.lastBreakBarTime = barTime;
-  if (
-    state.lastStructEventPivotCount >= 0 &&
-    state.lastStructEventPivotCount === state.pivotCount
-  ) {
-    return;
-  }
-  if (state.hasLastStructEvent && state.lastStructEventIsBOS === isBOS) return;
-  state.lastStructEventPivotCount = state.pivotCount;
-  state.lastStructEventIsBOS = isBOS;
-  state.hasLastStructEvent = true;
 }
 
 function initializeBasePivots(
@@ -295,6 +283,7 @@ function initializeBasePivots(
   pivots[0].moveType = UNKNOWN;
   pivots[1].moveType = determineMoveType(pivots, 1);
   state.pivotCount = pivots.length;
+  // Safe: fresh-load base init — bosOccurred is still false (only set on pending path).
   state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
 
   let currentJs = secondPivot.confirmationBarIndex + 1;
@@ -358,9 +347,19 @@ function initializeBasePivots(
     if (breakJs < 0) break;
 
     if (case1Break) {
-      handleStructuralBreak(state, times[breakJs], searchingForLow);
+      handleStructuralBreak(
+        state,
+        times[breakJs],
+        searchingForLow,
+        searchingForLow ? lastHighPrice : lastLowPrice,
+      );
     } else if (case2Break) {
-      handleStructuralBreak(state, times[breakJs], !searchingForLow);
+      handleStructuralBreak(
+        state,
+        times[breakJs],
+        !searchingForLow,
+        searchingForLow ? lastLowPrice : lastHighPrice,
+      );
     }
 
     if (case1Break && extremeJs >= 0 && extremeJs <= lastCompletedJs) {
@@ -418,6 +417,7 @@ function initializeBasePivots(
       pivots.push(newPivot);
       state.pivotCount = pivots.length;
       setLastPivotMoveType(pivots);
+      // Safe: inline pivot confirm in base init — bosOccurred stays false here.
       state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
 
       if (newPivot.isHigh) {
@@ -447,6 +447,7 @@ function initializeBasePivots(
           pivots.push(opp);
           state.pivotCount = pivots.length;
           setLastPivotMoveType(pivots);
+          // Safe: inline pivot confirm in base init — bosOccurred stays false here.
           state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
           currentJs = opp.confirmationBarIndex + 1;
         } else {
@@ -479,6 +480,7 @@ function initializeBasePivots(
           pivots.push(opp);
           state.pivotCount = pivots.length;
           setLastPivotMoveType(pivots);
+          // Safe: inline pivot confirm in base init — bosOccurred stays false here.
           state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
           currentJs = opp.confirmationBarIndex + 1;
         } else {
@@ -546,6 +548,7 @@ function initializeBasePivots(
               pivots.push(candidate);
               state.pivotCount = pivots.length;
               setLastPivotMoveType(pivots);
+              // Safe: inline pivot confirm in base init — bosOccurred stays false here.
               state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
               currentJs = candidate.confirmationBarIndex + 1;
             } else currentJs = breakJs + 1;
@@ -579,6 +582,7 @@ function initializeBasePivots(
               pivots.push(candidate);
               state.pivotCount = pivots.length;
               setLastPivotMoveType(pivots);
+              // Safe: inline pivot confirm in base init — bosOccurred stays false here.
               state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
               currentJs = candidate.confirmationBarIndex + 1;
             } else currentJs = breakJs + 1;
@@ -618,6 +622,7 @@ function initializeBasePivots(
           pivots.push(candidate);
           state.pivotCount = pivots.length;
           setLastPivotMoveType(pivots);
+          // Safe: inline pivot confirm in base init — bosOccurred stays false here.
           state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
           currentJs = candidate.confirmationBarIndex + 1;
         } else {
@@ -658,10 +663,16 @@ function checkPivotConfirmation(
     : pending.price + confirmDistance;
 
   const prevExt = getPrevSameTypePivotExtreme(pivots, pending.isHigh);
+  // Unreachable through the current search path (extremes are pre-filtered), but
+  // matches the source: discard a live extreme that fails structure containment.
   if (pending.isHigh && prevExt < DBL_MAX && pending.high <= prevExt) {
+    pending.barIndex = -1;
+    pending.barTime = 0;
     return false;
   }
   if (!pending.isHigh && prevExt > DBL_MIN && pending.low >= prevExt) {
+    pending.barIndex = -1;
+    pending.barTime = 0;
     return false;
   }
 
@@ -677,6 +688,7 @@ function checkPivotConfirmation(
     pivots.push({ ...pending });
     state.pivotCount = pivots.length;
     setLastPivotMoveType(pivots);
+    // Safe: pending pivot just confirmed — bosOccurred not set yet on this path.
     state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
     state.bosOccurred = false;
     state.bosSameTypeOccurred = false;
@@ -707,16 +719,16 @@ function checkStructureBreak(pending, pivots, closes, times, n, state) {
       const lastSame = pivots[pivots.length - 1].isHigh === pending.isHigh;
       if (!state.bosOccurred) {
         state.bosOccurred = true;
-        handleStructuralBreak(state, times[lastCompletedJs], true);
+        handleStructuralBreak(state, times[lastCompletedJs], true, prevSameLevel);
       }
       if (lastSame) state.bosSameTypeOccurred = true;
     }
   } else if (currentClose < prevSameLevel) {
     const lastSame = pivots[pivots.length - 1].isHigh === pending.isHigh;
-    if (!state.bosOccurred) {
-      state.bosOccurred = true;
-      handleStructuralBreak(state, times[lastCompletedJs], false);
-    }
+      if (!state.bosOccurred) {
+        state.bosOccurred = true;
+        handleStructuralBreak(state, times[lastCompletedJs], false, prevSameLevel);
+      }
     if (lastSame) state.bosSameTypeOccurred = true;
   }
 }
@@ -804,6 +816,7 @@ export function computeSwingStructure(bars, pointSize, params) {
   }
 
   const pivots = base.pivots;
+  // Safe: post base-init, before pending swing — bosOccurred still false.
   state.currentTrend = updateTrendFromPivots(pivots, state.currentTrend);
 
   const emptyPending = {
@@ -866,6 +879,8 @@ export function computeSwingStructure(bars, pointSize, params) {
       state,
     );
     if (emptyPending.isConfirmed) {
+      hasPending = false;
+    } else if (!emptyPending.barTime) {
       hasPending = false;
     } else if (emptyPending.barIndex >= 0) {
       checkStructureBreak(emptyPending, pivots, closes, times, n, state);
