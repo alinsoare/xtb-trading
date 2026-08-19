@@ -7,9 +7,10 @@ planned and tracked with [OpenSpec](https://openspec.dev/) (see `openspec/`).
 
 **The data is always offline.** Nothing is fetched because you opened a chart.
 A sync happens only when you ask for one — a button in the dev UI, a periodic
-refresh you switch on for the current session, the sync CLI, or a manually
-dispatched release workflow. If the data looks stale, the answer is a sync,
-never an implicit fetch.
+refresh you switch on for the current session, the sync CLI, a manually
+dispatched release workflow, or the release workflow's daily 12:00 UTC schedule
+(which keeps the published site fresh without anyone touching GitHub). If the
+data looks stale, the answer is a sync, never an implicit fetch.
 
 ## Quick start (dev mode)
 
@@ -207,15 +208,24 @@ price — the export script passes `PRICE_TYPICAL` into `iCustom`.
 
 ## Releasing to GitHub Pages
 
-`main` is development. A release is a manually dispatched GitHub Actions
-workflow that restores the previous `market.db` snapshot from the `data`
-branch, runs an incremental sync, commits the snapshot back, exports the
-static site, and deploys it to Pages. Data is never re-pulled from scratch, and
-no release drops bars the snapshot already holds.
+`main` is development. A release is a GitHub Actions workflow — dispatched
+manually or fired daily at **12:00 UTC** — that restores the previous
+`market.db` snapshot from the `data` branch, runs an incremental sync, commits
+the snapshot back, exports the static site, and deploys it to Pages. Each run
+does this unconditionally, even when no code changed, so the published snapshot
+stays fresh. Data is never re-pulled from scratch on a normal run, and no
+release drops bars the snapshot already holds.
 
-The dispatch carries one choice, **full refresh**. There are no bar-target
-inputs: fetch depth is fixed per timeframe. Each release exports every stored
-bar, so the published payload grows as history accumulates.
+Manual dispatch carries one choice, **full refresh**; scheduled runs are always
+incremental. There are no bar-target inputs: fetch depth is fixed per
+timeframe. Each release exports every stored bar, so the published payload grows
+as history accumulates.
+
+The schedule is read from the workflow file on the default branch; the job still
+checks out the `release` ref, so a scheduled run never publishes unreleased work
+from `main`. GitHub's cron is best-effort and may be delayed. After **60 days
+without repository activity**, GitHub disables scheduled workflows — re-enable
+them from the Actions tab if the daily release stops firing.
 
 ### Rehearse locally first
 

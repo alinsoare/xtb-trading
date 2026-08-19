@@ -1,8 +1,17 @@
 # Release to GitHub Pages.
 #
-# Manual dispatch ONLY — the dispatch is the explicit user action that
-# authorizes the Yahoo sync this workflow performs (offline-first rule).
-# No schedule, no push trigger, nothing fetches data automatically.
+# Two authorized triggers: workflow_dispatch (manual) and schedule (daily).
+# No push trigger — nothing else fetches data.
+#
+# Scheduled runs fire once per day at 12:00 UTC (GitHub Actions cron has no
+# timezone field). They are unconditional: always restore, incremental sync,
+# persist snapshot, export, and redeploy, even when no code changed. Full
+# refresh stays manual-only — inputs.full is unset on schedule, so sync never
+# gets --full.
+#
+# The cron is read from this file on the default branch only; the job still
+# checks out ref: release, so scheduled runs never publish unreleased work from
+# main.
 #
 # Every step except the deploy runs the same commands a maintainer uses
 # locally (see README "Rehearse locally first"), so this file stays a thin
@@ -17,6 +26,8 @@ on:
         description: "Full refresh (re-pull each timeframe's whole fetch window)"
         type: boolean
         default: false
+  schedule:
+    - cron: "0 12 * * *"
 
 permissions:
   contents: write # push the data-branch snapshot
