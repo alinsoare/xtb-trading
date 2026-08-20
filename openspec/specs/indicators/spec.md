@@ -254,9 +254,9 @@ Each rendered Order Block SHALL render as a rectangle spanning its own bar's low
 from that bar's time forward to the end of the zone's validity, drawn behind the candles,
 with a demand-coloured `OB` label. The rectangle and the label SHALL take the demand colour
 from the shared directional zone palette. The rectangle SHALL be painted as a **filled** area
-at 50% opacity of that colour and SHALL have **no border stroke**, which is what distinguishes
-an Order Block zone from an FVG zone's outline; the `OB` label SHALL stay at full colour
-strength so it remains legible over the fill. A zone's validity SHALL end at the
+at 10% opacity of that colour — 90% transparent — and SHALL have **no border stroke**, which is
+what distinguishes an Order Block zone from an FVG zone's outline; the `OB` label SHALL stay at
+full colour strength so it remains legible over the fill. A zone's validity SHALL end at the
 first close that breaks the swing that produced it — for a demand zone, a close below the
 first pivot's low or above the second pivot's high — and zones belonging to the newest swing
 SHALL remain open-ended through the newest bar. The same validity rule SHALL be computed for
@@ -305,16 +305,17 @@ supply zones, so a parity comparison can read it, even though no supply zone is 
   pivot's extreme
 - **THEN** the zone's rectangle ends at that bar rather than extending to the newest bar
 
-#### Scenario: OB rectangle is a borderless 50% fill
+#### Scenario: OB rectangle is a borderless 90%-transparent fill
 
 - **WHEN** an Order Block zone is rendered
-- **THEN** its rectangle is filled with its directional colour at 50% opacity and shows no
-  border stroke, while the candles beneath it stay visible through the fill
+- **THEN** its rectangle is filled with its directional colour at 10% opacity — 90% transparent —
+  and shows no border stroke, while the candles beneath it read at close to full contrast
+  through the fill
 
 #### Scenario: OB label stays readable over the fill
 
 - **WHEN** an Order Block zone's `OB` label is drawn over the zone's fill
-- **THEN** the label uses the full-strength directional colour rather than the 50%-opacity fill
+- **THEN** the label uses the full-strength directional colour rather than the 10%-opacity fill
   colour
 
 ### Requirement: OB marks its confirmed swing pivots

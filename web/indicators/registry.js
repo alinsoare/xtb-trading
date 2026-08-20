@@ -145,7 +145,7 @@ export class IndicatorPrimitive {
     if (style === "fill") {
       ctx.fillStyle = rect.color;
       const prevAlpha = ctx.globalAlpha;
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.1;
       ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
       ctx.globalAlpha = prevAlpha;
       return;
