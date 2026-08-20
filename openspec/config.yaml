@@ -28,7 +28,7 @@ context: |
   startup auto-sync, resuming a previously enabled refresh on a later load,
   fetch-on-view, live streaming quotes, websockets, or any network call
   triggered merely by loading/viewing a chart. The single sanctioned exception
-  is the release workflow's once-daily CI schedule (12:00 UTC), which keeps the
+  is the release workflow's twice-daily CI schedule (03:00 and 15:00 UTC), which keeps the
   published snapshot fresh without anyone touching GitHub. If a feature seems to
   need fresher data in the app, the answer is a control the user operates, not
   an implicit fetch.

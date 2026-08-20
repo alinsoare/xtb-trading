@@ -1,10 +1,10 @@
 # Release to GitHub Pages.
 #
-# Two authorized triggers: workflow_dispatch (manual) and schedule (daily).
+# Two authorized triggers: workflow_dispatch (manual) and schedule (twice daily).
 # No push trigger — nothing else fetches data.
 #
-# Scheduled runs fire once per day at 12:00 UTC (GitHub Actions cron has no
-# timezone field). They are unconditional: always restore, incremental sync,
+# Scheduled runs fire twice per day at 03:00 and 15:00 UTC (GitHub Actions cron
+# has no timezone field). They are unconditional: always restore, incremental sync,
 # persist snapshot, export, and redeploy, even when no code changed. Full
 # refresh stays manual-only — inputs.full is unset on schedule, so sync never
 # gets --full.
@@ -27,7 +27,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "0 3,15 * * *"
 
 permissions:
   contents: write # push the data-branch snapshot

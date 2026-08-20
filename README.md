@@ -8,7 +8,8 @@ planned and tracked with [OpenSpec](https://openspec.dev/) (see `openspec/`).
 **The data is always offline.** Nothing is fetched because you opened a chart.
 A sync happens only when you ask for one — a button in the dev UI, a periodic
 refresh you switch on for the current session, the sync CLI, a manually
-dispatched release workflow, or the release workflow's daily 12:00 UTC schedule
+dispatched release workflow, or the release workflow's twice-daily schedule at
+03:00 and 15:00 UTC
 (which keeps the published site fresh without anyone touching GitHub). If the
 data looks stale, the answer is a sync, never an implicit fetch.
 
@@ -214,7 +215,7 @@ price — the export script passes `PRICE_TYPICAL` into `iCustom`.
 ## Releasing to GitHub Pages
 
 `main` is development. A release is a GitHub Actions workflow — dispatched
-manually or fired daily at **12:00 UTC** — that restores the previous
+manually or fired twice a day at **03:00 and 15:00 UTC** — that restores the previous
 `market.db` snapshot from the `data` branch, runs an incremental sync, commits
 the snapshot back, exports the static site, and deploys it to Pages. Each run
 does this unconditionally, even when no code changed, so the published snapshot
@@ -230,7 +231,7 @@ The schedule is read from the workflow file on the default branch; the job still
 checks out the `release` ref, so a scheduled run never publishes unreleased work
 from `main`. GitHub's cron is best-effort and may be delayed. After **60 days
 without repository activity**, GitHub disables scheduled workflows — re-enable
-them from the Actions tab if the daily release stops firing.
+them from the Actions tab if the scheduled release stops firing.
 
 ### Rehearse locally first
 
