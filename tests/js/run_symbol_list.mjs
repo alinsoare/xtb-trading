@@ -142,10 +142,10 @@ checkSymbols(
 /* ---------- sortSymbols: each order ---------- */
 
 const scores = {
-  "AAA.US": { score: 2 },
-  "BBB.DE": { score: 5 },
-  "CCC.US": { score: 5 },
-  "DDD.EU": { score: 1 },
+  "AAA.US": { score: 2, headroomPct: 0.02 },
+  "BBB.DE": { score: 5, headroomPct: 0.08 },
+  "CCC.US": { score: 5, headroomPct: null },
+  "DDD.EU": { score: 1, headroomPct: 0.05 },
 };
 
 checkSymbols(
@@ -167,8 +167,8 @@ checkSymbols(
 );
 
 checkSymbols(
-  "sort by synced: recent first, never-synced last",
-  sortSymbols(symbols, "synced"),
+  "sort by headroom descending",
+  sortSymbols(symbols, "headroom", scores),
   ["BBB.DE", "DDD.EU", "AAA.US", "CCC.US"],
 );
 
@@ -186,14 +186,18 @@ checkSymbols(
 
 /* ---------- equal-key ties keep catalog order ---------- */
 
-const tiedSyncTimes = [
-  { xtb_symbol: "ONE", name: "One", last_sync_utc: "2026-01-01T00:00:00Z" },
-  { xtb_symbol: "TWO", name: "Two", last_sync_utc: "2026-01-01T00:00:00Z" },
+const tiedHeadroom = [
+  { xtb_symbol: "ONE", name: "One" },
+  { xtb_symbol: "TWO", name: "Two" },
 ];
+const tiedHeadroomScores = {
+  ONE: { headroomPct: 0.05 },
+  TWO: { headroomPct: 0.05 },
+};
 
 checkSymbols(
-  "equal sync times keep catalog order",
-  sortSymbols(tiedSyncTimes, "synced"),
+  "equal headroom keeps catalog order",
+  sortSymbols(tiedHeadroom, "headroom", tiedHeadroomScores),
   ["ONE", "TWO"],
 );
 
@@ -204,20 +208,33 @@ const tiedScores = {
 
 checkSymbols(
   "equal scores keep catalog order",
-  sortSymbols(tiedSyncTimes, "score", tiedScores),
+  sortSymbols(tiedHeadroom, "score", tiedScores),
   ["ONE", "TWO"],
 );
 
-const tiedSync = [
-  { xtb_symbol: "OLD", last_sync_utc: "2026-01-01T00:00:00Z" },
-  { xtb_symbol: "NEW", last_sync_utc: "2026-06-01T00:00:00Z" },
-  { xtb_symbol: "NEVER", last_sync_utc: null },
+const mixedHeadroom = [
+  { xtb_symbol: "HIGH", name: "High" },
+  { xtb_symbol: "LOW", name: "Low" },
+  { xtb_symbol: "NEG", name: "Negative" },
+  { xtb_symbol: "NONE", name: "None" },
 ];
+const mixedHeadroomScores = {
+  HIGH: { headroomPct: 0.1 },
+  LOW: { headroomPct: 0.02 },
+  NEG: { headroomPct: -0.01 },
+  NONE: { headroomPct: null },
+};
 
 checkSymbols(
-  "never-synced after all synced",
-  sortSymbols(tiedSync, "synced"),
-  ["NEW", "OLD", "NEVER"],
+  "negative headroom sorts below positive and above missing",
+  sortSymbols(mixedHeadroom, "headroom", mixedHeadroomScores),
+  ["HIGH", "LOW", "NEG", "NONE"],
+);
+
+checkSymbols(
+  "instruments without headroom sort last in default relative order",
+  sortSymbols(mixedHeadroom, "headroom", mixedHeadroomScores),
+  ["HIGH", "LOW", "NEG", "NONE"],
 );
 
 /* ---------- visibleSymbolList combines filter and sort ---------- */

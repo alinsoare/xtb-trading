@@ -42,7 +42,7 @@ export function markCount(score) {
   return 4;
 }
 
-function emptyResult(status, rangePct = null, positionPct = null) {
+function emptyResult(status, rangePct = null, positionPct = null, headroomPct = null) {
   return {
     status,
     score: 0,
@@ -50,6 +50,7 @@ function emptyResult(status, rangePct = null, positionPct = null) {
     reasons: [],
     rangePct,
     positionPct,
+    headroomPct,
   };
 }
 
@@ -77,14 +78,14 @@ export function scoreInstrument({
 
   const bars = barsFromSeries(seriesByTimeframe);
   const price = currentPrice(bars);
-  const { high, rangePct, positionPct } = computeRange(bars.d1, price);
+  const { high, rangePct, positionPct, headroomPct } = computeRange(bars.d1, price);
 
   if (
     bars.d1.length < Math.max(FVG_MIN_BARS, MACD_MIN_BARS, PIVOT_MIN_BARS) ||
     bars.h1.length < FVG_MIN_BARS ||
     bars.m15.length < FVG_MIN_BARS
   ) {
-    return emptyResult("insufficient-history", rangePct, positionPct);
+    return emptyResult("insufficient-history", rangePct, positionPct, headroomPct);
   }
 
   const gateOpen =
@@ -94,7 +95,7 @@ export function scoreInstrument({
     price < high * (1 - GATE_MIN_PEAK_DISCOUNT);
 
   if (!gateOpen) {
-    return emptyResult("screened", rangePct, positionPct);
+    return emptyResult("screened", rangePct, positionPct, headroomPct);
   }
 
   const reasons = [{ rule: "Eligibility gate", points: WEIGHT_GATE_PASS, source: SOURCE_GATE }];
@@ -103,7 +104,7 @@ export function scoreInstrument({
   const d1Fvg = signalOverrides.d1Fvg ?? inLiveBullishFvg(bars.d1, pointSize, price);
   const h1Run = signalOverrides.h1Run ?? bullishRun(bars.h1, H1_RUN_BARS);
   if (d1Fvg.insufficient || h1Run.insufficient) {
-    return emptyResult("insufficient-history", rangePct, positionPct);
+    return emptyResult("insufficient-history", rangePct, positionPct, headroomPct);
   }
   if (d1Fvg.ok && h1Run.ok) {
     score += WEIGHT_D1_FVG_H1_RUN;
@@ -117,7 +118,7 @@ export function scoreInstrument({
   const h1Fvg = signalOverrides.h1Fvg ?? inLiveBullishFvg(bars.h1, pointSize, price);
   const m15Run = signalOverrides.m15Run ?? bullishRun(bars.m15, M15_RUN_BARS);
   if (h1Fvg.insufficient || m15Run.insufficient) {
-    return emptyResult("insufficient-history", rangePct, positionPct);
+    return emptyResult("insufficient-history", rangePct, positionPct, headroomPct);
   }
   if (h1Fvg.ok && m15Run.ok) {
     score += WEIGHT_H1_FVG_M15_RUN;
@@ -130,7 +131,7 @@ export function scoreInstrument({
 
   const macd = signalOverrides.macd ?? macdRedMorningStar(bars.d1);
   if (macd.insufficient) {
-    return emptyResult("insufficient-history", rangePct, positionPct);
+    return emptyResult("insufficient-history", rangePct, positionPct, headroomPct);
   }
   if (macd.ok) {
     score += WEIGHT_MACD_RED_MORNING_STAR;
@@ -143,7 +144,7 @@ export function scoreInstrument({
 
   const pivot = signalOverrides.pivot ?? lastConfirmedHighPivot(bars.d1, pointSize, price);
   if (pivot.insufficient) {
-    return emptyResult("insufficient-history", rangePct, positionPct);
+    return emptyResult("insufficient-history", rangePct, positionPct, headroomPct);
   }
   const pivotPoints = scorePivotDistance(pivot.pivotDistance);
   if (pivotPoints > 0) {
@@ -158,5 +159,6 @@ export function scoreInstrument({
     reasons,
     rangePct,
     positionPct,
+    headroomPct,
   };
 }

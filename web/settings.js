@@ -22,7 +22,7 @@ export const SHOW_ALL = "all";
 export const DEFAULT_DISPLAY_LIMIT = 5000;
 
 export const DEFAULT_SORT_ORDER = "default";
-export const VALID_SORT_ORDERS = new Set(["default", "score", "symbol", "name", "synced"]);
+export const VALID_SORT_ORDERS = new Set(["default", "score", "symbol", "name", "headroom"]);
 
 export const DEFAULT_SETTINGS = Object.freeze({
   displayLimit: DEFAULT_DISPLAY_LIMIT,

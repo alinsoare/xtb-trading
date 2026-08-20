@@ -130,19 +130,40 @@ eligible however far above the window's low it still trades.
 Passing the gate SHALL itself contribute 1 point to the instrument's score, recorded as a rule
 that fired like any other scored component. The gate SHALL remain a hard gate as well: an
 instrument failing either condition SHALL score nothing and carry no mark, however many signals
-would otherwise fire. Its range and position figures SHALL still be reported, so a missing mark
-is legible rather than looking like an absent computation. The position figure is reported for
-context only and SHALL NOT decide eligibility.
+would otherwise fire. Its range, position and headroom figures SHALL still be reported, so a
+missing mark is legible rather than looking like an absent computation. The position and headroom
+figures are reported for context only and SHALL NOT decide eligibility.
+
+Alongside the range and the position, the screener SHALL report a third figure for the same
+30-day window — the **headroom** to the window's high, measured as
+`(highest high − current price) / current price`. It states how far the current price would have
+to rise, as a percentage of that price, to reach the highest high of the window. It SHALL be
+derived from the same 30-day window's highest high and the same shared current-price convention
+the gate is judged against, so the three figures can never disagree about the window or the price
+they describe.
+
+The headroom SHALL be reported as it computes and SHALL NOT be clamped, floored or withheld
+because of its sign: where the current price is at or above the window's highest high — which the
+current-price convention permits, since the price may come from a finer timeframe than the window
+is measured on — the figure is zero or negative, and that is the honest reading.
+
+The headroom SHALL be reported for every instrument whose range and position are reported, and
+SHALL be absent exactly where those two are absent — an instrument whose window yields no usable
+range has no headroom figure either, rather than a figure derived from a partial window. It SHALL
+NOT contribute to the score, alter any weight, or appear among the recorded reasons.
+
+The range and the position SHALL keep their existing meanings unchanged: adding the headroom
+SHALL NOT redefine, replace or reformat either of them.
 
 #### Scenario: Too quiet to be worth flagging
 
 - **WHEN** an instrument's 30-day range is 1.5% and price sits at the bottom of it
-- **THEN** it carries no mark, and its range and position figures are still shown
+- **THEN** it carries no mark, and its range, position and headroom figures are still shown
 
 #### Scenario: Not far enough below the peak
 
 - **WHEN** an instrument's 30-day range is 12% and price is 1% below the window's highest high
-- **THEN** it carries no mark, and its range and position figures are still shown
+- **THEN** it carries no mark, and its range, position and headroom figures are still shown
 
 #### Scenario: Not low in its range
 
@@ -171,6 +192,37 @@ context only and SHALL NOT decide eligibility.
 
 - **WHEN** an instrument passes the gate and no other screening signal fires
 - **THEN** its score is 1, and the recorded reasons name the eligibility gate with 1 point
+
+#### Scenario: Headroom from the range and the position
+
+- **WHEN** an instrument's 30-day window has a lowest low of 100 and a highest high of 140, so its
+  range is 40%, and the current price is 136, so its position is 90% of the range
+- **THEN** its headroom is 2.9%, being `(140 − 136) / 136`, and its range and position figures are
+  still 40% and 90%
+
+#### Scenario: Headroom at the bottom of the range
+
+- **WHEN** the current price is exactly the window's lowest low and the range is 40%
+- **THEN** the headroom equals the range, 40%, because the whole range still lies above the price
+
+#### Scenario: Headroom is not clamped at the top
+
+- **WHEN** the current price, taken from the most recent bar across the screened timeframes, is
+  above the 30-day window's highest high
+- **THEN** the headroom is reported as the negative figure it computes to, rather than as zero,
+  as absent, or as an error
+
+#### Scenario: Headroom does not affect the score
+
+- **WHEN** two instruments pass the gate with identical signals but very different headroom
+- **THEN** their scores, marks and recorded reasons are identical, and neither reason list mentions
+  the headroom
+
+#### Scenario: No window, no headroom
+
+- **WHEN** an instrument's 30-day window yields no usable range, so neither a range nor a position
+  figure is reported
+- **THEN** no headroom figure is reported for it either
 
 ### Requirement: Screening signals and score
 
@@ -422,6 +474,10 @@ and the cache SHALL be local to the browser: it SHALL NOT travel with the export
 SHALL NOT be shared between browsers. Where the browser denies persistent storage, screening
 SHALL still work, simply recomputing on every load.
 
+A cached result SHALL NOT be displayed when it predates a change to what a result reports: a
+result written before the headroom figure existed SHALL be recomputed before it is shown, rather
+than rendered with that figure missing, and this SHALL NOT require the user to sync.
+
 #### Scenario: Nothing synced since last visit
 
 - **WHEN** the user reloads the page and no instrument has synced since the previous load
@@ -436,3 +492,10 @@ SHALL still work, simply recomputing on every load.
 
 - **WHEN** the browser blocks persistent storage
 - **THEN** screening runs normally on every load, with no error state
+
+#### Scenario: A cache written before the headroom figure is not reused
+
+- **WHEN** the user opens the list with a cache written before results reported headroom, and no
+  instrument has synced since
+- **THEN** the catalog is re-screened and every screened row shows a headroom figure, with no row
+  showing range and position alone

@@ -50,15 +50,13 @@ function compareName(a, b) {
   return (a.name || "").localeCompare(b.name || "");
 }
 
-function compareSynced(a, b) {
-  const aSync = a.last_sync_utc;
-  const bSync = b.last_sync_utc;
-  if (aSync && !bSync) return -1;
-  if (!aSync && bSync) return 1;
-  if (aSync && bSync) {
-    const aTime = new Date(aSync).getTime();
-    const bTime = new Date(bSync).getTime();
-    if (bTime !== aTime) return bTime - aTime;
+function compareHeadroom(a, b, screenerScores) {
+  const aHeadroom = screenerScores[a.xtb_symbol]?.headroomPct;
+  const bHeadroom = screenerScores[b.xtb_symbol]?.headroomPct;
+  if (aHeadroom != null && bHeadroom == null) return -1;
+  if (aHeadroom == null && bHeadroom != null) return 1;
+  if (aHeadroom != null && bHeadroom != null && bHeadroom !== aHeadroom) {
+    return bHeadroom - aHeadroom;
   }
   return 0;
 }
@@ -67,7 +65,7 @@ const COMPARATORS = {
   score: (a, b, scores) => compareScore(a, b, scores),
   symbol: (a, b) => compareSymbol(a, b),
   name: (a, b) => compareName(a, b),
-  synced: (a, b) => compareSynced(a, b),
+  headroom: (a, b, scores) => compareHeadroom(a, b, scores),
 };
 
 export function sortSymbols(symbols, sortOrder, screenerScores = {}) {

@@ -207,13 +207,36 @@ checkDeep(
 
 /* ---------- sort orders ---------- */
 
-for (const order of ["score", "symbol", "name", "synced"]) {
+for (const order of ["score", "symbol", "name", "headroom"]) {
   check(
     `${order} sort order restores as itself`,
     restoreSettings({ sortOrder: order }, LIVE).sortOrder,
     order,
   );
 }
+check(
+  "withdrawn synced sort order falls back to default",
+  restoreSettings({ sortOrder: "synced" }, LIVE).sortOrder,
+  "default",
+);
+checkDeep(
+  "stored synced does not disturb other settings",
+  restoreSettings(
+    {
+      sortOrder: "synced",
+      symbol: "NVD.DE",
+      timeframe: "h1",
+      search: "keep",
+    },
+    LIVE,
+  ),
+  {
+    ...DEFAULT_SETTINGS,
+    symbol: "NVD.DE",
+    timeframe: "h1",
+    search: "keep",
+  },
+);
 for (const order of ["bogus", "bars"]) {
   check(
     `${order} sort order restores as default`,

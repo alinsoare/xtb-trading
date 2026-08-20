@@ -36,14 +36,17 @@ export function renderScreenerRow(symbol, result) {
   let detail = "";
   if (result.status === "not-screened") {
     detail = `<div class="screener-state">not screened</div>`;
-  } else if (result.status === "insufficient-history") {
+  } else if (result.status === "insufficient-history" && result.rangePct == null) {
     detail = `<div class="screener-state">insufficient history</div>`;
   } else {
-    marks = renderMarks(result.marks, result.reasons);
-    sources = renderSourceNames(result.reasons);
+    if (result.status === "screened") {
+      marks = renderMarks(result.marks, result.reasons);
+      sources = renderSourceNames(result.reasons);
+    }
     const range = formatPct(result.rangePct);
     const position = formatPct(result.positionPct);
-    detail = `<div class="screener-figures">30d range ${range} · position ${position}</div>`;
+    const headroom = formatPct(result.headroomPct);
+    detail = `<div class="screener-figures">30d range ${range} · position ${position} · headroom ${headroom}</div>`;
   }
 
   return `

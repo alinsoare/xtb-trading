@@ -46,6 +46,13 @@ function checkDeep(name, actual, expected) {
   }
 }
 
+function checkTrue(name, condition) {
+  if (!condition) {
+    failures += 1;
+    console.error(`FAIL ${name}`);
+  }
+}
+
 function bar(time, open, high, low, close) {
   return { time, open, high, low, close };
 }
@@ -220,6 +227,53 @@ const flatRange = [
 const zeroRange = computeRange(flatRange, 100);
 check("zero-range window yields null rangePct", zeroRange.rangePct, null);
 check("zero-range window yields null positionPct", zeroRange.positionPct, null);
+check("zero-range window yields null headroomPct", zeroRange.headroomPct, null);
+
+const headroomWindow = [
+  bar(1_700_000_000, 100, 140, 100, 136),
+];
+const atNinetyPct = computeRange(headroomWindow, 136);
+check("headroom example range is 40%", Number(atNinetyPct.rangePct?.toFixed(4)), 0.4);
+check("headroom example position is 90%", Number(atNinetyPct.positionPct?.toFixed(4)), 0.9);
+check(
+  "headroom is (high - price) / price",
+  atNinetyPct.headroomPct,
+  (140 - 136) / 136,
+);
+
+const atLow = computeRange(headroomWindow, 100);
+check(
+  "headroom at the low equals the range",
+  atLow.headroomPct,
+  atLow.rangePct,
+);
+
+const aboveHigh = computeRange(headroomWindow, 145);
+checkTrue(
+  "headroom above the window high is negative and unclamped",
+  aboveHigh.headroomPct != null && aboveHigh.headroomPct < 0,
+);
+check(
+  "headroom above high is (high - price) / price",
+  aboveHigh.headroomPct,
+  (140 - 145) / 145,
+);
+
+check("no bars yields null headroomPct", computeRange([], 100).headroomPct, null);
+check("no price yields null headroomPct", computeRange(headroomWindow, null).headroomPct, null);
+
+check(
+  "not-screened has null headroomPct",
+  scoreInstrument({ enabled: false, seriesByTimeframe: {}, pointSize: 0.01 }).headroomPct,
+  null,
+);
+
+const insufficient = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: { d1: makeBars(5), h1: makeBars(5), m15: makeBars(5) },
+});
+check("insufficient-history carries headroomPct key", "headroomPct" in insufficient, true);
 
 /* ---------- score composition ---------- */
 
@@ -265,10 +319,72 @@ check("gated-out instrument scores nothing", gatedOut.score, 0);
 check("gated-out has no reasons", gatedOut.reasons.length, 0);
 check("gated-out keeps range figures", gatedOut.rangePct != null, true);
 check("gated-out keeps position figures", gatedOut.positionPct != null, true);
+check("gated-out carries headroomPct", gatedOut.headroomPct != null, true);
 check(
   "gated-out is within 2% of the 30-day high",
   gatedOutD1[gatedOutD1.length - 1].close >= 100 * (1 - GATE_MIN_PEAK_DISCOUNT),
   true,
+);
+
+const highHeadroomD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 120,
+  low: 100,
+  close: 102,
+});
+const lowHeadroomD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 120,
+  low: 100,
+  close: 110,
+});
+const sharedOverrides = {
+  d1Fvg: { ok: false, insufficient: false },
+  h1Run: { ok: false, insufficient: false },
+  h1Fvg: { ok: false, insufficient: false },
+  m15Run: { ok: false, insufficient: false },
+  macd: { ok: false, insufficient: false },
+  pivot: { pivotDistance: null, insufficient: false },
+};
+const highHeadroomScore = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: {
+    d1: highHeadroomD1,
+    h1: makeBars(400, 1_700_000_000, 3600, 100),
+    m15: makeBars(400, 1_700_000_000, 900, 100),
+  },
+  signalOverrides: sharedOverrides,
+});
+const lowHeadroomScore = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: {
+    d1: lowHeadroomD1,
+    h1: makeBars(400, 1_700_000_000, 3600, 100),
+    m15: makeBars(400, 1_700_000_000, 900, 100),
+  },
+  signalOverrides: sharedOverrides,
+});
+checkTrue(
+  "different headroom does not change score",
+  highHeadroomScore.headroomPct !== lowHeadroomScore.headroomPct &&
+    highHeadroomScore.score === lowHeadroomScore.score,
+);
+checkDeep(
+  "different headroom does not change marks or reasons",
+  {
+    marks: highHeadroomScore.marks,
+    reasons: highHeadroomScore.reasons,
+  },
+  {
+    marks: lowHeadroomScore.marks,
+    reasons: lowHeadroomScore.reasons,
+  },
+);
+checkTrue(
+  "headroom does not appear in reasons",
+  [...highHeadroomScore.reasons, ...lowHeadroomScore.reasons].every(
+    (r) => !String(r.rule).toLowerCase().includes("headroom"),
+  ),
 );
 
 const gateOpenD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
