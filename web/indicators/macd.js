@@ -1,8 +1,4 @@
-/* MACD indicator, ported from SimpleMACD.mq5 v1.02.
- *
- * Source: ~/daytrading/mt5/indicators/SimpleMACD.mq5
- * Version: 1.02
- * Hash: 6e916173f4219438ea1cf5ed260e507d1081f042635e73484c4156da243b5f92
+/* MACD indicator, ported from an external source indicator.
  *
  * Chronological, oldest-first. The newest stored bar carries MACD values like
  * any other bar — a per-bar reading, not a confirmed pattern.
@@ -13,7 +9,7 @@
  * - Signal line is never drawn (source default InpHideSignalLine = true).
  */
 
-import { mt5Ema, mt5EmaFromSeries } from "./mt5math.js";
+import { smaSeededEma, smaSeededEmaFromSeries } from "./series-math.js";
 import { registerIndicator } from "./registry.js";
 
 export const MACD_PARAMS = {
@@ -33,8 +29,8 @@ function typicalPrice(bar) {
 export function macdArrays(bars, params = MACD_PARAMS) {
   const n = bars.length;
   const applied = bars.map(typicalPrice);
-  const fastEma = mt5Ema(applied, params.fast);
-  const slowEma = mt5Ema(applied, params.slow);
+  const fastEma = smaSeededEma(applied, params.fast);
+  const slowEma = smaSeededEma(applied, params.slow);
 
   const mainFirst = params.slow - 1;
   const main = new Array(n).fill(NaN);
@@ -42,7 +38,7 @@ export function macdArrays(bars, params = MACD_PARAMS) {
     main[i] = fastEma[i] - slowEma[i];
   }
 
-  const signal = mt5EmaFromSeries(main, params.signal, mainFirst);
+  const signal = smaSeededEmaFromSeries(main, params.signal, mainFirst);
   const histFirst = mainFirst + params.signal - 1;
   const histogram = new Array(n).fill(NaN);
   for (let i = histFirst; i < n; i++) {

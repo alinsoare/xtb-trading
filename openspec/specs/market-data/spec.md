@@ -83,7 +83,7 @@ All stored bar timestamps SHALL be UTC epoch seconds. Intraday bars keep their t
 
 ### Requirement: Prices are stored unadjusted
 
-Bars SHALL be stored with unadjusted prices (no dividend/split adjustment), matching what XTB and MT5 display. When the catalog declares a price divisor for an instrument (e.g. pence-quoted tickers), it SHALL be applied on ingest.
+Bars SHALL be stored with unadjusted prices (no dividend/split adjustment), matching what a broker's trading platform displays rather than a back-adjusted history. When the catalog declares a price divisor for an instrument (e.g. pence-quoted tickers), it SHALL be applied on ingest.
 
 #### Scenario: Pence-quoted instrument
 

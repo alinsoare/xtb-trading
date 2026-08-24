@@ -2,7 +2,7 @@
  * dependency); CI and developers run:  node tests/js/run_fixtures.mjs
  *
  * Compares, against values recorded from the reference Python implementation:
- * - MT5-seeded EMA arrays (strict tolerance: seeding bugs surface here first),
+ * - SMA-seeded EMA arrays (strict tolerance: seeding bugs surface here first),
  * - the stochastic array,
  * - the zones themselves (times exact, prices to tolerance),
  * - the insufficient-history warning.
@@ -12,7 +12,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { fvgZones, mt5Ema, mt5Stochastic } from "../../web/indicators/fvg.js";
+import { fvgZones, lowHighStochastic, smaSeededEma } from "../../web/indicators/fvg.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = join(HERE, "..", "fixtures", "fvg");
@@ -83,12 +83,12 @@ for (const file of files) {
   const params = jsParams(fixture.params);
 
   for (const [period, expected] of Object.entries(fixture.ema)) {
-    compareSeries(name, `ema${period}`, mt5Ema(closes, Number(period)), expected);
+    compareSeries(name, `ema${period}`, smaSeededEma(closes, Number(period)), expected);
   }
   compareSeries(
     name,
     "stoch",
-    mt5Stochastic(highs, lows, closes, params.stochK, params.stochSlowing),
+    lowHighStochastic(highs, lows, closes, params.stochK, params.stochSlowing),
     fixture.stoch,
   );
 

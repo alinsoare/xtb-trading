@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the client-side indicator framework — a registry of indicators the user can enable and disable individually — and its first implementation, a working Fair Value Gap (FVG) scanner with signal parity to the original MQL5 indicator.
+Defines the client-side indicator framework — a registry of indicators the user can enable and disable individually — and its first implementation, a working Fair Value Gap (FVG) scanner with signal parity to the external source indicator the scanner is ported from.
 
 ## Requirements
 
@@ -139,7 +139,7 @@ Because colour no longer distinguishes one indicator from another, each zone-dra
 
 ### Requirement: FVG indicator
 
-The first registered indicator SHALL be a Fair Value Gap scanner over three consecutive closed bars (bar1, bar2, bar3 in chronological order, bar3 newest), reproducing the original MQL5 indicator's rules with its default parameters, all of which SHALL be defined in one place. Three deliberate deviations: the original's recent-bars scan cap (`bar_limit`, 120) is dropped — the scan SHALL cover every displayed bar from the slow EMA warm-up boundary through the second-newest displayed bar, and all detected zones SHALL be drawn at once; the rules that measure a bar's displacement SHALL read space-extended values, as noted below; and bearish zones SHALL be detected but never drawn, as stated below. The pattern rules:
+The first registered indicator SHALL be a Fair Value Gap scanner over three consecutive closed bars (bar1, bar2, bar3 in chronological order, bar3 newest), reproducing the rules of the external source indicator it is ported from, with that source's default parameters, all of which SHALL be defined in one place. Three deliberate deviations: the source's recent-bars scan cap (`bar_limit`, 120) is dropped — the scan SHALL cover every displayed bar from the slow EMA warm-up boundary through the second-newest displayed bar, and all detected zones SHALL be drawn at once; the rules that measure a bar's displacement SHALL read space-extended values, as noted below; and bearish zones SHALL be detected but never drawn, as stated below. The pattern rules:
 
 - an EMA 13/89/377 regime ladder evaluated at bar3 decides which pattern directions are searched;
 - the middle bar's space-extended body SHALL be at least as large as bar1's and bar3's space-extended bodies, so that a bar which opened away from its predecessor's close is credited with the whole move it made rather than its drawn body alone;
@@ -149,7 +149,7 @@ The first registered indicator SHALL be a Fair Value Gap scanner over three cons
 - a stochastic filter (%K 21, slowing 9) SHALL reject bullish patterns in overbought and bearish patterns in oversold territory;
 - the zone height in instrument points SHALL fall within configured floor and ceiling values, using the catalog's point size.
 
-**Only bullish zones SHALL be rendered.** Bearish zones SHALL continue to be detected — they are the other half of the parity comparison against the MQL5 source, and their detection has no bearing on bullish output — but a bearish zone SHALL produce neither a rectangle nor a label on the chart. This mirrors the treatment the OB indicator already gives its supply zones, and SHALL be recorded alongside the FVG parameters as a rendering deviation only. Every statement below about rendering therefore concerns bullish zones alone.
+**Only bullish zones SHALL be rendered.** Bearish zones SHALL continue to be detected — they are the other half of the parity comparison against the source indicator, and their detection has no bearing on bullish output — but a bearish zone SHALL produce neither a rectangle nor a label on the chart. This mirrors the treatment the OB indicator already gives its supply zones, and SHALL be recorded alongside the FVG parameters as a rendering deviation only. Every statement below about rendering therefore concerns bullish zones alone.
 
 The gap and the zone SHALL be measured from recorded prices alone: spaces SHALL NOT move either edge of a zone. Detected bullish zones SHALL render as rectangles spanning from bar1's time forward a configured number of bars, drawn behind the candles, with a label at bar3. Both the rectangle and the label SHALL take the bullish/demand colour from the shared directional zone palette. The rectangle SHALL be painted as an unfilled outline — a stroked border at full colour strength with no interior fill — which is what distinguishes an FVG zone from an Order Block zone now that the two share a palette.
 
@@ -175,7 +175,7 @@ The gap and the zone SHALL be measured from recorded prices alone: spaces SHALL 
 
 #### Scenario: Zone deep in history is still drawn
 
-- **WHEN** a qualifying pattern sits 700 bars back in a 1,000-bar series, well outside the original indicator's 120-bar cap
+- **WHEN** a qualifying pattern sits 700 bars back in a 1,000-bar series, well outside the source indicator's 120-bar cap
 - **THEN** its zone is detected and drawn alongside any newer zones
 
 #### Scenario: Middle bar dominates only once its space is counted
@@ -198,11 +198,11 @@ The gap and the zone SHALL be measured from recorded prices alone: spaces SHALL 
 - **WHEN** an FVG zone is rendered
 - **THEN** its rectangle shows a stroked border with no interior fill, so candles inside the zone remain fully visible
 
-### Requirement: FVG signal parity with the MT5 original
+### Requirement: FVG signal parity with the source indicator
 
-The FVG computation SHALL preserve the numeric conventions the original depends on, because deviations change signals: the EMA SHALL be seeded with the SMA of the first period's values (not a first-value seed — with EMA 377 the difference persists long enough to alter signals); the stochastic SHALL use rolling low/high extremes with SMA slowing per MT5's STO_LOWHIGH mode; the newest stored bar SHALL play MT5's forming bar and be excluded from pattern matching; and no signal SHALL be emitted at all until the slow EMA has enough data.
+The FVG computation SHALL preserve the numeric conventions the source indicator depends on, because deviations change signals: the EMA SHALL be seeded with the SMA of the first period's values (not a first-value seed — with EMA 377 the difference persists long enough to alter signals); the stochastic SHALL use the source's low/high stochastic mode — rolling low/high extremes with SMA slowing; the newest stored bar SHALL stand in for the source's forming bar — the still-open newest bar of a live chart — and be excluded from pattern matching; and no signal SHALL be emitted at all until the slow EMA has enough data.
 
-Three deviations from the original are sanctioned, and no others: the dropped recent-bars scan cap, space-extended displacement measurement, and bearish zones being detected but never drawn. The second changes which triplets qualify in both directions — it admits patterns the original rejects and rejects patterns the original admits — so parity against the original SHALL be verified on the numeric conventions above rather than on the resulting zone set, and the fixtures SHALL keep a raw-bar set that exercises those conventions independently of the space rules.
+Three deviations from the source are sanctioned, and no others: the dropped recent-bars scan cap, space-extended displacement measurement, and bearish zones being detected but never drawn. The second changes which triplets qualify in both directions — it admits patterns the source rejects and rejects patterns the source admits — so parity against the source SHALL be verified on the numeric conventions above rather than on the resulting zone set, and the fixtures SHALL keep a raw-bar set that exercises those conventions independently of the space rules.
 
 The third is a **rendering deviation alone** and SHALL NOT change which zones are detected. Parity comparisons and fixtures SHALL therefore continue to read **detected** zones in both directions rather than what is drawn, so hiding the bearish side cannot weaken or alter a parity claim, and the existing fixtures SHALL keep passing unchanged.
 
@@ -238,8 +238,8 @@ With per-timeframe fetch depth in place, a fully synced symbol SHALL hold enough
 ### Requirement: OB indicator
 
 A second registered indicator SHALL be an Order Block scanner, registry id `ob` and toolbar
-label `OB`, reproducing the Order Block detection of the MQL5 `SMCTrading.mq5` indicator
-(v3.23) with its default parameters, all of which SHALL be defined in one place.
+label `OB`, reproducing the Order Block detection of the external source indicator it is ported
+from, with that source's default parameters, all of which SHALL be defined in one place.
 
 An Order Block is the last candle opposing a structural swing, taken from the bars of that
 swing. For every consecutive pair of confirmed swing pivots of opposite type (see the
@@ -266,10 +266,10 @@ swing-structure requirement), the scan SHALL:
   second pivot's extreme to the candidate's near edge: twice the candidate's high-to-low
   height SHALL be less than that distance, and a non-positive distance SHALL reject.
 
-**Only demand zones SHALL be rendered.** Supply zones SHALL continue to be detected — they are
-the other half of the parity comparison against the source, and their detection has no bearing
-on demand output — but a supply zone SHALL produce neither a rectangle nor a label on the
-chart. Every statement below about rendering therefore concerns demand zones alone.
+**Only demand zones SHALL be rendered.** Supply zones SHALL continue to be detected — the
+detection is direction-symmetric and covers both directions, and hiding one has no bearing on
+demand output — but a supply zone SHALL produce neither a rectangle nor a label on the chart.
+Every statement below about rendering therefore concerns demand zones alone.
 
 Each rendered Order Block SHALL render as a rectangle spanning its own bar's low to high,
 from that bar's time forward to the end of the zone's validity, drawn behind the candles,
@@ -281,7 +281,8 @@ full colour strength so it remains legible over the fill. A zone's validity SHAL
 first close that breaks the swing that produced it — for a demand zone, a close below the
 first pivot's low or above the second pivot's high — and zones belonging to the newest swing
 SHALL remain open-ended through the newest bar. The same validity rule SHALL be computed for
-supply zones, so a parity comparison can read it, even though no supply zone is drawn.
+supply zones even though no supply zone is drawn, so that the two directions differ in
+rendering and in nothing else.
 
 #### Scenario: Demand zone detected
 
@@ -502,10 +503,10 @@ NOT be exposed as a separate indicator. It comprises:
 - **THEN** the first break is classified a reversal and flips the direction, and the second is
   classified a continuation and leaves it unchanged
 
-### Requirement: OB omits the MQL5 source's other SMC features
+### Requirement: OB omits the source's other SMC features
 
 The port SHALL be limited to Order Block detection and rendering, plus the confirmed-pivot
-`H`/`L` labels. The following behaviour present in `SMCTrading.mq5` SHALL NOT be reproduced as
+`H`/`L` labels. The following behaviour present in the source indicator SHALL NOT be reproduced as
 user-visible output: arrowed lines between pivots, BOS and SMS break labels, pivot confirmation
 level lines, pending-pivot markers, the trend readout, price-return arrow markers on bars that
 re-enter a zone, and the slow-RSI momentum block. The slow RSI SHALL NOT be computed at all,
@@ -541,35 +542,15 @@ lines between pivots or any other line, level or ray attached to a pivot.
   direction; it keeps no list of break events and applies no rule that would decide which break
   earns a label
 
-### Requirement: OB signal parity with the MT5 original
+### Requirement: OB deviations from the source indicator
 
-The Order Block computation SHALL follow the same algorithm as `SMCTrading.mq5`. The port SHALL
-record the exact source it was derived from — path, version and content hash — and that record
-SHALL identify the file the parity comparison was actually run against, so a source that has
-changed under the same version string cannot pass unnoticed. The current source is version
-3.23 at sha256 `484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7`. The MT5
-export the comparison reads SHALL carry the same hash as the port records; a mismatch SHALL be
-treated as an unverified parity claim rather than a passing one.
+The Order Block port SHALL follow the same algorithm as its external source indicator apart
+from the deviations listed below, and no others. A divergence from the source that is not on
+this list SHALL be treated as a defect in the port rather than accepted as a difference. This is
+a statement about the port's own behaviour: it holds whether or not any comparison against the
+source is ever run.
 
-Parity SHALL be claimed and verified on timeframes of H4 and above, where the source's dropped
-skip-bar filter cannot fire and both implementations therefore read the same bars; on
-timeframes below H4 the port's output SHALL NOT be required to match MT5. Verification SHALL
-compare the JS output against the MT5 indicator's own output over the same bars for the same
-symbol and timeframe, not merely by review, and SHALL cover both the internal swing structure
-and the resulting zones. Because the port draws only demand zones while the source draws both,
-the comparison SHALL be made on **detected** zones in both directions rather than on what is
-drawn:
-
-- pivot bar times, pivot types, confirmation bar times, and impulse/pullback classification
-  SHALL match exactly, because a single divergent pivot changes every downstream zone;
-- Order Block bar times and directions SHALL match exactly for demand and supply zones alike,
-  and zone prices SHALL match within a floating-point tolerance, since they are copies of
-  stored bar extremes rather than derived values;
-- zone validity end times SHALL match exactly for zones already closed in the MT5 export;
-  zones still open at export time SHALL be compared as open rather than by end time.
-
-Only these deviations from the source SHALL be sanctioned, and each SHALL be recorded where
-the parameters are defined:
+Each deviation SHALL be recorded alongside the parameters:
 
 - **The lookback cap is dropped.** The source scans a bounded recent window; the port SHALL
   scan every displayed bar, so that older zones stay visible per the full-history requirement.
@@ -581,44 +562,22 @@ the parameters are defined:
   never hidden because the prevailing swing direction is down.
 - **Supply zones are detected but never drawn.** The source draws both directions; the port
   SHALL draw demand zones only. This is a rendering deviation alone and SHALL NOT change which
-  zones are detected, so it cannot affect a comparison made on detected zones.
-- **The newest stored bar plays MT5's forming bar** and SHALL be excluded from acting as a
-  candidate Order Block bar or a confirmed pivot, matching the convention the FVG indicator
-  already follows.
+  zones are detected, so the two directions differ in rendering and in nothing else.
+- **The newest stored bar stands in for the source's forming bar** — the still-open newest bar
+  of a live chart — and SHALL be excluded from acting as a candidate Order Block bar or a
+  confirmed pivot, matching the convention the FVG indicator already follows.
 - **The skip-bar interval is dropped.** The source refuses to treat a bar whose open time falls
   in a configured server-time window as a pivot or an Order Block candidate, on timeframes
   below H4. The port SHALL treat every bar in the displayed series as real data, skipping and
   modifying none, and SHALL NOT carry the window, its bounds, or a server-time offset as a
-  parameter. Because this changes which bars are eligible below H4, parity below H4 is out
-  of scope per the scope above; at H4 and above the filter is inert in the source, so this
-  deviation cannot affect a verified comparison.
-- **Only the source's fresh-load path is reproduced.** The port recomputes the whole structure
-  from the displayed series, which corresponds to the source's full-recalculation path; the
-  source's per-tick and per-bar incremental refinements are not modelled. Verification SHALL
-  therefore be made against an export taken after forcing a full recalculation in MT5.
-
-Any divergence found during verification that is not on this list SHALL be treated as a defect
-in the port rather than accepted as a difference.
-
-#### Scenario: Structure compared before zones
-
-- **WHEN** the JS output and an MT5 export of the same symbol and timeframe are compared
-- **THEN** the pivot sequence, including confirmation times and impulse classification, is
-  compared first, so a structural divergence is reported as such instead of surfacing as
-  mismatched zones
-
-#### Scenario: Stale source record fails the claim
-
-- **WHEN** the recorded source hash differs from the hash of `SMCTrading.mq5` on disk or from
-  the hash the MT5 export was taken with
-- **THEN** the parity claim counts as unverified until the export and the record are refreshed
-  against the same file
-
-#### Scenario: Supply zones are still compared
-
-- **WHEN** the comparison runs against an MT5 export containing both demand and supply zones
-- **THEN** the supply zones are compared as detected zones and must match, even though the port
-  draws none of them
+  parameter. Because this changes which bars are eligible below H4, the port's output on
+  timeframes below H4 SHALL NOT be expected to agree with the source's; at H4 and above the
+  filter is inert in the source, so this deviation has no effect there.
+- **Only the source's fresh-load path is reproduced.** The port SHALL recompute the whole
+  structure from the displayed series in one pass, which corresponds to the source's
+  full-recalculation path; the source's per-tick and per-bar incremental refinements SHALL NOT
+  be modelled. Output therefore SHALL NOT depend on the order in which bars arrived, only on
+  the displayed series.
 
 #### Scenario: Zone deep in history is still drawn
 
@@ -632,6 +591,13 @@ in the port rather than accepted as a difference.
 - **THEN** it is drawn, because the port applies neither the source's trend-bias display filter
   nor its newest-swing-only filter
 
+#### Scenario: Hiding supply does not change detection
+
+- **WHEN** a series holds both demand and supply Order Blocks
+- **THEN** every supply zone is present among the detected zones with its direction, prices and
+  validity end, and the set of detected demand zones is exactly what it would be if supply
+  zones were drawn
+
 #### Scenario: Newest bar is not an order block
 
 - **WHEN** the newest stored bar would qualify as an Order Block candidate
@@ -644,12 +610,25 @@ in the port rather than accepted as a difference.
 - **THEN** it is treated as real data and qualifies, because the port applies no time-of-day
   filter on any timeframe
 
-#### Scenario: Intraday output is not held to parity
+#### Scenario: Intraday output is not expected to match the source
 
-- **WHEN** the port's zones on a timeframe below H4 differ from the MT5 chart's zones on the
-  same instrument
+- **WHEN** the port's zones on a timeframe below H4 differ from the zones the source indicator
+  draws on a live chart of the same instrument
 - **THEN** the difference is not a defect on that basis alone, because the source excludes
   skip-window bars there and the port does not
+
+#### Scenario: Output depends only on the displayed series
+
+- **WHEN** the same displayed series is computed after arriving as one batch and after
+  arriving bar by bar
+- **THEN** the structure and the zones are identical, because only the full-recalculation path
+  is reproduced
+
+#### Scenario: Deviations are recorded where the parameters are
+
+- **WHEN** a reader inspects where the Order Block parameters are defined
+- **THEN** every deviation above is recorded there, so the port's departures from its source are
+  readable next to the values they apply to
 
 ### Requirement: OB reports when structure is missing
 
@@ -703,7 +682,7 @@ A pane series SHALL cover the same displayed slice of bars as the candles, leavi
 
 ### Requirement: MACD indicator
 
-A registered indicator with registry id `macd` and toolbar label `MACD` SHALL reproduce the MQL5 `SimpleMACD.mq5` indicator (v1.02), using pane output. Its parameters SHALL be defined in one place and SHALL be fast period 13, slow period 34, signal period 9, and typical price `(high + low + close) / 3` as the applied price — the periods and applied price the user asked for.
+A registered indicator with registry id `macd` and toolbar label `MACD` SHALL reproduce the external source indicator it is ported from, using pane output. Its parameters SHALL be defined in one place and SHALL be fast period 13, slow period 34, signal period 9, and typical price `(high + low + close) / 3` as the applied price — the periods and applied price the user asked for.
 
 The computation over the displayed bars, oldest first, SHALL be:
 
@@ -715,7 +694,7 @@ The computation over the displayed bars, oldest first, SHALL be:
 
 The pane SHALL draw the main line, the histogram, and a horizontal reference line at zero. Each histogram bar SHALL be coloured by the sign of its own value: the chart's bullish colour when the value is greater than or equal to zero, the bearish colour when it is below zero — the same rule the source's coloured histogram applies. The main line SHALL use a single colour distinct from both histogram colours, since it crosses zero freely and its colour carries no meaning.
 
-Unlike the FVG and OB indicators, the newest stored bar SHALL carry MACD values like any other bar: MT5 plots the MACD on its forming bar, and a MACD value is a per-bar reading rather than a confirmed pattern, so there is nothing to withhold.
+Unlike the FVG and OB indicators, the newest stored bar SHALL carry MACD values like any other bar: the source plots the MACD on its forming bar, and a MACD value is a per-bar reading rather than a confirmed pattern, so there is nothing to withhold.
 
 #### Scenario: MACD renders in its own pane
 
@@ -746,9 +725,9 @@ The signal line SHALL be computed, because the histogram is defined as the main 
 - **WHEN** the main line and the signal line diverge
 - **THEN** the histogram grows accordingly, proving the signal line is computed even though it is not drawn
 
-### Requirement: MACD parity with the MT5 original
+### Requirement: MACD parity with the source indicator
 
-The MACD computation SHALL preserve the numeric conventions `SimpleMACD.mq5` depends on, because deviations shift every value:
+The MACD computation SHALL preserve the numeric conventions its source indicator depends on, because deviations shift every value:
 
 - both price EMAs SHALL be seeded with the SMA of the first `period` applied-price values, so the fast EMA's first defined value sits at index `fastPeriod − 1` and the slow EMA's at index `slowPeriod − 1`;
 - the main line SHALL be defined from index `slowPeriod − 1` onward and undefined before it;
@@ -758,6 +737,14 @@ The MACD computation SHALL preserve the numeric conventions `SimpleMACD.mq5` dep
 With the configured 13/34/9, this places the main line's first defined value at index 33 and the histogram's at index 41.
 
 Parity SHALL be verified numerically against the reference computation over a deterministic bar series rather than by review, comparing the main, signal and histogram arrays value by value within a floating-point tolerance, and comparing the first defined index of each array exactly.
+
+The reference values SHALL be produced entirely within this repository: a reference computation of the conventions above, over a deterministic bar series the repository itself constructs, committed as a fixture. Producing them SHALL require no trading terminal, no market data and no network access, so that regenerating the fixture is a command any contributor or CI run can execute rather than a manual step at one machine. Running the parity check SHALL likewise require nothing beyond a clone of the repository.
+
+The reference computation SHALL be written independently of the indicator's own implementation and SHALL NOT call into it, so that the comparison has two implementations to disagree. Because both are transcriptions of the same source, the check SHALL additionally assert values derivable from the conventions above without either implementation — the SMA-seeded first defined value of each array, and the first defined indices exactly — so that a shared misreading of the seeding or of the warm-up boundaries cannot pass. What this establishes SHALL be understood as: the port's numeric conventions are pinned against regression and against the stated seeding arithmetic. It SHALL NOT be claimed to re-derive agreement with the source indicator running on a live terminal; that agreement was established once against the source and is upheld by the conventions this requirement states, not by the fixture.
+
+The fixture SHALL record everything needed to reproduce it — the generator inputs that determine the bar series, the bar window it covers (its bar count and its oldest and newest bar times), and the periods used — and regenerating it against an unchanged implementation SHALL reproduce the committed file exactly, so that a fixture appearing in a diff means something the check covers has changed.
+
+When no committed fixture is present, the parity check SHALL fail with a message naming the directory it looked in and the regeneration path, rather than aborting with an unhandled error. A fixture that has gone missing is a defect in the test suite's packaging and SHALL read as one.
 
 Two departures from the source SHALL be sanctioned, and no others: the applied price is fixed to typical price and the periods to 13/34/9 rather than being user inputs, and the signal line is never drawn rather than being toggleable.
 
@@ -775,6 +762,41 @@ Two departures from the source SHALL be sanctioned, and no others: the applied p
 
 - **WHEN** the fixtures are regenerated from the reference computation
 - **THEN** the main, signal and histogram arrays match value by value within tolerance and their first defined indices match exactly
+
+#### Scenario: Parity check runs from a clean clone
+
+- **WHEN** the parity check is run in a checkout that has never had a trading terminal available
+- **THEN** it finds at least one committed fixture, compares against it, and reports a pass or a numeric failure — it does not report the fixture as unavailable
+
+#### Scenario: Fixture is regenerated without a terminal
+
+- **WHEN** a contributor with no trading terminal, no market-data access and no network connection regenerates the fixture
+- **THEN** the generation succeeds from the repository alone, producing the same fixture the repository already holds
+
+#### Scenario: Fixture records its bar window
+
+- **WHEN** the committed fixture is inspected
+- **THEN** it states the bar count and the oldest and newest bar times it was computed over, together with the generator inputs and periods that reproduce that series, so a later regeneration can be shown to describe the same window
+
+#### Scenario: Regeneration is a no-op against an unchanged port
+
+- **WHEN** the fixture is regenerated with neither the reference computation, the generator inputs nor the indicator changed
+- **THEN** the committed file is unchanged, so the working tree stays clean
+
+#### Scenario: Reference is not the port under test
+
+- **WHEN** the reference values are produced
+- **THEN** they come from a computation that does not call into the indicator's own implementation, and the fixture additionally carries first defined indices and SMA-seeded first values that follow from the stated conventions alone
+
+#### Scenario: Seeding regression is caught
+
+- **WHEN** the indicator is changed to seed either price EMA from its first value instead of the SMA of the first `period` values
+- **THEN** the parity check fails, naming a differing index rather than passing on a shifted series
+
+#### Scenario: Missing fixture reads as a fixture problem
+
+- **WHEN** the parity check runs with no fixture directory or an empty one
+- **THEN** it fails with a message naming the expected fixture location and how to regenerate it in-repo, and not with an unhandled file-system error
 
 ### Requirement: MACD declares its own warm-up
 

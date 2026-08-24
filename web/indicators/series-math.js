@@ -1,15 +1,17 @@
-/* MT5 numeric conventions, ported with signal parity in mind.
+/* Shared EMA and stochastic helpers for indicator signal parity.
  *
- * These deliberately mirror MetaTrader's iMA / iStochastic behavior rather
- * than the textbook or pandas defaults — the differences change signals:
- * - the EMA is seeded with the SMA of the first `period` values (MT5's iMA);
- *   with EMA 377 a first-value seed diverges long enough to alter decisions;
- * - the stochastic is STO_LOWHIGH with SMA slowing: rolling extremes over the
+ * These deliberately follow the source platform's moving-average and stochastic
+ * conventions rather than textbook or pandas defaults — the differences change
+ * signals:
+ * - the EMA is seeded with the SMA of the first `period` values (not a
+ *   first-value seed — with EMA 377 the difference persists long enough to
+ *   alter decisions);
+ * - the stochastic is the source's low/high mode: rolling extremes over the
  *   %K period, then SMA sums over the slowing window.
- * Warm-up regions are NaN, mirroring MT5's EMPTY_VALUE.
+ * Warm-up regions are NaN, standing in for the source's empty value.
  */
 
-export function mt5Ema(values, period) {
+export function smaSeededEma(values, period) {
   const n = values.length;
   const out = new Array(n).fill(NaN);
   if (n < period) return out;
@@ -25,10 +27,10 @@ export function mt5Ema(values, period) {
   return out;
 }
 
-/* EMA of a series whose warm-up starts at `firstValidIndex`, mirroring
- * CalcEmaFromSeries in SimpleMACD.mq5: seed at firstValidIndex + period − 1
- * with the SMA of values[firstValidIndex .. firstValidIndex + period − 1]. */
-export function mt5EmaFromSeries(values, period, firstValidIndex) {
+/* EMA of a series whose warm-up starts at `firstValidIndex`: seed at
+ * firstValidIndex + period − 1 with the SMA of
+ * values[firstValidIndex .. firstValidIndex + period − 1]. */
+export function smaSeededEmaFromSeries(values, period, firstValidIndex) {
   const n = values.length;
   const out = new Array(n).fill(NaN);
   const firstEma = firstValidIndex + period - 1;
@@ -45,7 +47,7 @@ export function mt5EmaFromSeries(values, period, firstValidIndex) {
   return out;
 }
 
-export function mt5Stochastic(high, low, close, kPeriod = 21, slowing = 9) {
+export function lowHighStochastic(high, low, close, kPeriod = 21, slowing = 9) {
   const n = close.length;
 
   // Rolling extremes over kPeriod bars; NaN during warm-up.

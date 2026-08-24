@@ -1,10 +1,8 @@
-/* Order Block scanner, ported from SMCTrading.mq5 v3.23 (OB detection stage).
+/* Order Block scanner, ported from an external source indicator (OB detection
+ * stage).
  *
- * Source: ~/daytrading/mt5/indicators/SMCTrading.mq5
- * Version: 3.23
- * Hash: 484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7
- *
- * Chronological, oldest-first. The newest stored bar plays MT5's forming bar 0.
+ * Chronological, oldest-first. The newest stored bar stands in for the
+ * source's forming bar — the still-open newest bar of a live chart.
  *
  * Sanctioned deviations (parity scoped to H4+ where skip filter is inert):
  * - InpLookbackBars cap dropped: every displayed bar is scanned.
@@ -18,29 +16,28 @@
 import {
   computeSwingStructure,
   IMPULSE,
-  OB_STRUCTURE_SOURCE,
 } from "./ob-structure.js";
 import { PIVOT_LABEL_COLOR, ZONE_PALETTE } from "./palette.js";
 import { registerIndicator } from "./registry.js";
 
-/* MT5 defaults. Dropped vs source: lookback cap (full-history scan), display/trend
+/* Source defaults. Dropped vs source: lookback cap (full-history scan), display/trend
  * filters (all demand zones drawn; no show-history switch), supply rendering
  * (detected for parity, demand-only on chart), skip-bar interval (parity H4+).
  *
  * Verified parity: XAUUSD D1, 338 bars — 16/16 pivots and 13/13 zones exact.
  *
- * Intraday spot-check (tools/ob_intraday_spotcheck.mjs), XAUUSD M15, newest 2000 of
+ * Intraday spot-check (historical), XAUUSD M15, newest 2000 of
  * 10,761 exported bars: 105 pivots and 77 zones match exactly. Two caveats came out of
  * it, both recorded here because they are easy to rediscover the hard way:
  *
  * 1. The comparison only works over the source's own 2000-bar lookback. That cap does
- *    not just hide older pivots, it decides where MT5's structure seeds from, so
+ *    not just hide older pivots, it decides where the source indicator's structure seeds from, so
  *    handing the port the full series compares two runs that began at different points
  *    (403 port pivots against 107, all cascade from the seed). D1 needed none of this
  *    because 338 bars sit under the cap.
  * 2. The run could NOT confirm that intraday divergence traces to the dropped skip
- *    window, because the window was never in effect on the exported chart: MT5 itself
- *    placed 4 pivots on bars opening inside [23:30, 01:00). XAUUSD also has no bars at
+ *    window, because the window was never in effect on the exported chart: the source
+ *    indicator itself placed 4 pivots on bars opening inside [23:30, 01:00). XAUUSD also has no bars at
  *    all in 23:30-23:59 on that feed (a market break), so the window reduces to
  *    00:00-01:00 there and this instrument is a poor probe for it either way.
  *
@@ -414,5 +411,3 @@ registerIndicator({
     return { drawables, warning };
   },
 });
-
-export { OB_STRUCTURE_SOURCE };

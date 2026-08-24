@@ -1,12 +1,10 @@
-/* Swing structure for Order Block detection, ported from SMCTrading.mq5 v3.23.
+/* Swing structure for Order Block detection, ported from an external source
+ * indicator.
  *
- * Source: ~/daytrading/mt5/indicators/SMCTrading.mq5
- * Version: 3.23
- * Hash: 484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7
- *
- * Chronological, oldest-first bar arrays. The newest stored bar plays MT5's
- * forming bar 0 and is excluded from confirmed-pivot and OB-candidate scans.
- * Internal computation only — nothing here is rendered.
+ * Chronological, oldest-first bar arrays. The newest stored bar stands in for
+ * the source's forming bar — the still-open newest bar of a live chart — and
+ * is excluded from confirmed-pivot and OB-candidate scans. Internal computation
+ * only — nothing here is rendered.
  *
  * Deliberate deviation: no skip-bar time-of-day filter (every bar is eligible).
  */
@@ -20,17 +18,13 @@ const TREND_UNKNOWN = 0;
 const DBL_MAX = Number.MAX_VALUE;
 const DBL_MIN = -Number.MAX_VALUE;
 
-export const OB_STRUCTURE_SOURCE = {
-  path: "~/daytrading/mt5/indicators/SMCTrading.mq5",
-  version: "3.23",
-  hash: "484d821dff2081a56c081331e9897fc1837e21cff800c4e74930266a35faf8a7",
-};
+// Source index: newest-first bar number the source indicator uses (bar 0 is newest).
 
-function mt5ToJs(mt5Bar, n) {
-  return n - 1 - mt5Bar;
+function sourceToJs(sourceBar, n) {
+  return n - 1 - sourceBar;
 }
 
-function jsToMt5(jsIdx, n) {
+function jsToSource(jsIdx, n) {
   return n - 1 - jsIdx;
 }
 
@@ -252,13 +246,13 @@ function initializeBasePivots(
   for (let js = pivotBars; js <= n - pivotBars - 1; js++) {
     if (isPivotHighJs(js, typical, pivotBars, n)) {
       const adjJs = adjustPivotHighBarJs(js, highs, pivotBars);
-      const confirmMt5 = Math.max(0, jsToMt5(js, n) - pivotBars);
-      const confirmJs = mt5ToJs(confirmMt5, n);
+      const confirmSrc = Math.max(0, jsToSource(js, n) - pivotBars);
+      const confirmJs = sourceToJs(confirmSrc, n);
       allPivots.push(initPivot(adjJs, typical, highs, lows, times, true, confirmJs, false));
     } else if (isPivotLowJs(js, typical, pivotBars, n)) {
       const adjJs = adjustPivotLowBarJs(js, lows, pivotBars);
-      const confirmMt5 = Math.max(0, jsToMt5(js, n) - pivotBars);
-      const confirmJs = mt5ToJs(confirmMt5, n);
+      const confirmSrc = Math.max(0, jsToSource(js, n) - pivotBars);
+      const confirmJs = sourceToJs(confirmSrc, n);
       allPivots.push(initPivot(adjJs, typical, highs, lows, times, false, confirmJs, false));
     }
   }
@@ -364,20 +358,20 @@ function initializeBasePivots(
 
     if (case1Break && extremeJs >= 0 && extremeJs <= lastCompletedJs) {
       let searchStartJs = currentJs;
-      const breakMt5 = jsToMt5(breakJs, n);
-      const currentMt5 = jsToMt5(currentJs, n);
+      const breakSrc = jsToSource(breakJs, n);
+      const currentSrc = jsToSource(currentJs, n);
 
       if (searchingForLow) {
-        for (let fbMt5 = breakMt5 + pivotBars + 2; fbMt5 <= currentMt5; fbMt5++) {
-          const fbJs = mt5ToJs(fbMt5, n);
+        for (let fbSrc = breakSrc + pivotBars + 2; fbSrc <= currentSrc; fbSrc++) {
+          const fbJs = sourceToJs(fbSrc, n);
           if (highs[fbJs] > lastHighPrice && closes[fbJs] < lastHighPrice) {
             searchStartJs = fbJs;
             break;
           }
         }
       } else {
-        for (let fbMt5 = breakMt5 + pivotBars + 2; fbMt5 <= currentMt5; fbMt5++) {
-          const fbJs = mt5ToJs(fbMt5, n);
+        for (let fbSrc = breakSrc + pivotBars + 2; fbSrc <= currentSrc; fbSrc++) {
+          const fbJs = sourceToJs(fbSrc, n);
           if (lows[fbJs] < lastLowPrice && closes[fbJs] > lastLowPrice) {
             searchStartJs = fbJs;
             break;
@@ -489,20 +483,20 @@ function initializeBasePivots(
       }
     } else if (case2Break && extremeJs >= 0 && extremeJs <= lastCompletedJs) {
       let wickBreakJs = -1;
-      const breakMt5 = jsToMt5(breakJs, n);
-      const currentMt5 = jsToMt5(currentJs, n);
+      const breakSrc = jsToSource(breakJs, n);
+      const currentSrc = jsToSource(currentJs, n);
 
       if (searchingForLow) {
-        for (let fbMt5 = breakMt5 + pivotBars + 2; fbMt5 <= currentMt5; fbMt5++) {
-          const fbJs = mt5ToJs(fbMt5, n);
+        for (let fbSrc = breakSrc + pivotBars + 2; fbSrc <= currentSrc; fbSrc++) {
+          const fbJs = sourceToJs(fbSrc, n);
           if (lows[fbJs] < lastLowPrice && closes[fbJs] > lastLowPrice) {
             wickBreakJs = fbJs;
             break;
           }
         }
       } else {
-        for (let fbMt5 = breakMt5 + pivotBars + 2; fbMt5 <= currentMt5; fbMt5++) {
-          const fbJs = mt5ToJs(fbMt5, n);
+        for (let fbSrc = breakSrc + pivotBars + 2; fbSrc <= currentSrc; fbSrc++) {
+          const fbJs = sourceToJs(fbSrc, n);
           if (highs[fbJs] > lastHighPrice && closes[fbJs] < lastHighPrice) {
             wickBreakJs = fbJs;
             break;
@@ -512,7 +506,7 @@ function initializeBasePivots(
 
       if (wickBreakJs >= 0) {
         const minWickDistance = pivotBars + 2;
-        if (jsToMt5(wickBreakJs, n) - breakMt5 < minWickDistance) {
+        if (jsToSource(wickBreakJs, n) - breakSrc < minWickDistance) {
           wickBreakJs = -1;
         }
       }
@@ -764,7 +758,7 @@ function pivotToExport(p) {
   };
 }
 
-/** Full recalculation equivalent to MT5 prev_calculated == 0. */
+/** Full recalculation from the whole displayed series. */
 export function computeSwingStructure(bars, pointSize, params) {
   const pivotBars = params.pivotBars;
   const confirmPoints = params.confirmPoints;

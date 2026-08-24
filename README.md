@@ -27,9 +27,8 @@ with:
 uv run pytest                    # backend
 node tests/js/run_fixtures.mjs   # FVG golden-fixture tests (dev-time only)
 node tests/js/run_space_fixtures.mjs # FVG close-to-open-space rule tests (dev-time only)
-node tests/js/run_ob_fixtures.mjs # OB parity vs MT5 export (dev-time only)
-node tests/js/run_macd_fixtures.mjs # MACD parity vs MT5 export (dev-time only)
-node tests/js/run_mt5math.mjs    # MT5 EMA helpers (dev-time only)
+node tests/js/run_macd_fixtures.mjs # MACD parity fixtures (dev-time only)
+node tests/js/run_series_math.mjs  # shared EMA/stochastic helpers (dev-time only)
 node tests/js/run_measure.mjs    # ruler measurement math (dev-time only)
 node tests/js/run_settings.mjs   # persisted settings + display limit (dev-time only)
 node tests/js/run_scroll_lock.mjs # chart-tool drag-pan suppression + undo (dev-time only)
@@ -128,15 +127,15 @@ always fetches everything — the rule applies to periodic runs only.
 
 Indicators are computed client-side in JavaScript from the bars on the chart
 and toggle individually — no server, so they work identically on the static
-site. Both are ports of MQL5 indicators with their signal-parity conventions
-preserved, and both scan the whole displayed series so every detected zone is
-visible at once. Raising the display limit deepens the scan; setting it below an
-indicator's warm-up produces the insufficient-history warning rather than a
-silently empty chart, even when far more bars are stored.
+site. Three indicators are ports of external source indicators with their
+signal-parity conventions preserved, and each scans the whole displayed series
+so every detected zone is visible at once. Raising the display limit deepens the
+scan; setting it below an indicator's warm-up produces the insufficient-history
+warning rather than a silently empty chart, even when far more bars are stored.
 
-**FVG** is a Fair Value Gap scanner ported from `FVGSignal.mq5`. Two deliberate
-deviations from that source, recorded in the file header and the indicators
-spec:
+**FVG** is a Fair Value Gap scanner ported from an external source indicator.
+Two deliberate deviations from that source, recorded in the file header and the
+indicators spec:
 
 - The recent-bars scan cap is dropped, so every detected zone is visible deep in
   history.
@@ -151,24 +150,25 @@ prove numeric conventions (EMA seeding, stochastic, warm-up warning). Space
 behaviour is covered separately by hand-checked cases in
 `tests/fixtures/fvg-spaces/`.
 
-**OB** is an Order Block scanner ported from `SMCTrading.mq5` v3.23
-(sha256 `484d821d…`). It marks the last opposing candle before an impulse that
-broke structure: **demand zones only** are drawn in green, each labelled `OB`.
-Supply zones are still detected internally for MT5 parity but are not rendered.
+**OB** is an Order Block scanner ported from an external source indicator.
+It marks the last opposing candle before an impulse that broke structure:
+**demand zones only** are drawn in green, each labelled `OB`.
+Supply zones are still detected internally but are not rendered.
 They rest on a full internal port of the source's swing-pivot detection,
 points-based confirmation, structural break tracking and impulse/pullback
 classification, none of which is rendered. The source's slow-RSI block is not
 ported at all — it is dead code there, computed but never read.
 
-Six deliberate deviations from `SMCTrading.mq5`, recorded in `OB_PARAMS`:
+Six deliberate deviations from the source indicator, recorded in `OB_PARAMS`:
 
 - The lookback cap is dropped, so zones stay visible deep in history.
 - Every detected **demand** zone is drawn, matching the source's history mode
   rather than its live view, which hides counter-trend zones and all but the
   newest swing. There is no show-history switch — full history is always on.
 - Supply zones are detected but never drawn (rendering deviation only).
-- The newest stored bar stands in for MT5's forming bar and never becomes a zone
-  or a confirmed pivot, the same convention FVG follows.
+- The newest stored bar stands in for the source's forming bar — the still-open
+  newest bar of a live chart — and never becomes a zone or a confirmed pivot,
+  the same convention FVG follows.
 - The skip-bar interval is dropped: the source refuses pivots on bars opening in
   a server-time window below H4, while this port takes **every bar as real
   data**. Parity is therefore claimed only at H4 and above, where that filter is
@@ -177,40 +177,23 @@ Six deliberate deviations from `SMCTrading.mq5`, recorded in `OB_PARAMS`:
 - Only the source's fresh-load path is reproduced; incremental per-bar
   refinements are not modelled.
 
-### Regenerating the OB fixtures
-
-Unlike FVG there is no Python reference implementation, so MT5 itself is the
-oracle and the fixtures come from a running terminal:
-
-1. Open a chart at H4 or above (D1 is the verified case) in the MT5 install used
-   for testing, attach `SMCTrading` with `InpShowHistory = true`, and force a
-   full recalculation by reloading the indicator or switching timeframe and back.
-   The port reconstructs the series in one pass, which matches MT5's recalculated
-   state rather than the state a long-running chart accumulates.
-2. Run the `ExportOBOracle` script on that chart. It writes `bars_`, `pivots_`,
-   `zones_` and `meta_` CSVs to `MQL5/Files/ob_oracle/`. Its source lives at
-   `tools/mql5/ExportOBOracle.mq5`; compile it from a path without spaces, since
-   MetaEditor's `/compile:` flag fails silently on spaces.
-3. `uv run python tools/generate_ob_fixtures.py` turns those CSVs into
-   `tests/fixtures/ob/`, taking the point size from the `meta_` export because
-   the confirmation distance is measured in points.
-4. `node tests/js/run_ob_fixtures.mjs` compares the pivot sequence first and
-   only then the zones, so a structural divergence is reported as structural
-   instead of surfacing as a handful of misplaced rectangles.
-
 ### Regenerating the MACD fixtures
 
-Like OB, MT5 is the oracle. `SimpleMACD` must be configured 13/34/9 on typical
-price — the export script passes `PRICE_TYPICAL` into `iCustom`.
+The committed fixtures under `tests/fixtures/macd/` are what the parity check
+runs against — `node tests/js/run_macd_fixtures.mjs` needs no trading terminal, no
+market data, and no network. Regeneration is only for replacing those files
+after a change to the port or the reference computation.
 
-1. Open **XAUUSD D1** in MT5-Testing and run the `ExportMacdOracle` script on
-   that chart. It writes JSON to `MQL5/Files/macd_oracle/`. Source:
-   `tools/mql5/ExportMacdOracle.mq5` (compile via MetaEditor only when the
-   source changes).
-2. `uv run python tools/copy_macd_fixture.py` copies the JSON into
-   `tests/fixtures/macd/`.
-3. `node tests/js/run_macd_fixtures.mjs` compares main, signal and histogram
-   arrays value by value.
+```bash
+uv run python tools/generate_macd_fixtures.py
+node tests/js/run_macd_fixtures.mjs
+```
+
+The generator builds a deterministic synthetic bar series and computes the
+expected MACD arrays from the stated numeric conventions (typical price,
+SMA-seeded EMAs, main-line-seeded signal). The check pins the port against
+those conventions and catches regressions; it does not re-derive agreement
+with the source indicator running on a live chart.
 
 ## Releasing to GitHub Pages
 

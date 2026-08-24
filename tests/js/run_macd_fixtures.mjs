@@ -1,12 +1,14 @@
 /* Golden-fixture tests for the JS MACD port. Dev-time only:
  *   node tests/js/run_macd_fixtures.mjs
  *
- * Feeds the port exactly the exported bar window and compares main, signal and
- * histogram value by value within tolerance. Warm-up zeros from MT5 are treated
- * as undefined; first-defined indices are asserted exactly.
+ * Feeds the port the fixture bar series and compares main, signal and
+ * histogram value by value within tolerance. Warm-up positions encoded as
+ * null are skipped; first-defined indices are asserted exactly.
+ *
+ * Regenerate fixtures: uv run python tools/generate_macd_fixtures.py
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,10 +63,13 @@ function assertFirstIndex(fixture, label, actual, expectedFirst) {
   }
 }
 
-const files = readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".json"));
+let files = [];
+if (existsSync(FIXTURE_DIR)) {
+  files = readdirSync(FIXTURE_DIR).filter((f) => f.endsWith(".json"));
+}
 if (!files.length) {
   console.error(
-    `no fixtures found in ${FIXTURE_DIR}; compile ExportMacdOracle.mq5, run it in MT5-Testing, then copy the JSON here`,
+    `no fixtures found in ${FIXTURE_DIR}; run: uv run python tools/generate_macd_fixtures.py`,
   );
   process.exit(1);
 }

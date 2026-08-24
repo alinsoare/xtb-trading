@@ -182,7 +182,7 @@ def fetch_bars(
                 start=start,
                 end=end,
                 interval=tf.yahoo_interval,
-                auto_adjust=False,  # unadjusted prices, matching XTB and MT5
+                auto_adjust=False,  # unadjusted prices, matching a broker's platform display
                 actions=False,
                 raise_errors=False,
             )

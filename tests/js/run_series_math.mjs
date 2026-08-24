@@ -1,8 +1,8 @@
-/* Unit tests for MT5 numeric helpers. Dev-time only:
- *   node tests/js/run_mt5math.mjs
+/* Unit tests for shared EMA/stochastic helpers. Dev-time only:
+ *   node tests/js/run_series_math.mjs
  */
 
-import { mt5EmaFromSeries } from "../../web/indicators/mt5math.js";
+import { smaSeededEmaFromSeries } from "../../web/indicators/series-math.js";
 
 let failures = 0;
 
@@ -22,7 +22,7 @@ function assertClose(a, b, label) {
 // Seed index: first defined value at firstValid + period - 1.
 {
   const values = [NaN, NaN, 10, 20, 30, 40, 50];
-  const out = mt5EmaFromSeries(values, 3, 2);
+  const out = smaSeededEmaFromSeries(values, 3, 2);
   if (!Number.isNaN(out[0]) || !Number.isNaN(out[1]) || !Number.isNaN(out[2]) || !Number.isNaN(out[3])) {
     fail(`seed index: expected NaN before index 4, got ${out.slice(0, 5)}`);
   }
@@ -34,7 +34,7 @@ function assertClose(a, b, label) {
 // Seed value: SMA of the first `period` defined values.
 {
   const values = [1, 2, 3, 4, 5, 6];
-  const out = mt5EmaFromSeries(values, 3, 0);
+  const out = smaSeededEmaFromSeries(values, 3, 0);
   if (!assertClose(out[2], 2, "seed value")) {
     // mean(1, 2, 3)
   }
@@ -43,7 +43,7 @@ function assertClose(a, b, label) {
 // NaN-prefixed input must not poison the output.
 {
   const values = [NaN, NaN, NaN, 100, 200, 300, 400];
-  const out = mt5EmaFromSeries(values, 3, 3);
+  const out = smaSeededEmaFromSeries(values, 3, 3);
   if (!Number.isNaN(out[0]) || !Number.isNaN(out[2]) || !Number.isNaN(out[4])) {
     fail(`NaN prefix: warm-up not NaN: ${out.slice(0, 6)}`);
   }
@@ -59,4 +59,4 @@ if (failures) {
   console.error(`${failures} failure(s)`);
   process.exit(1);
 }
-console.log("ok mt5math helpers");
+console.log("ok series-math helpers");

@@ -1,8 +1,9 @@
-/* Fair Value Gap scanner, ported from the FVGSignal.mq5 lineage.
+/* Fair Value Gap scanner, ported from an external source indicator.
  *
  * Chronological, oldest-first: the pattern is bar1 -> bar2 -> bar3 in time
- * order, bar3 newest. The newest stored bar plays MT5's forming bar 0 and is
- * never bar3. Two deliberate deviations from the original:
+ * order, bar3 newest. The newest stored bar stands in for the source's
+ * forming bar — the still-open newest bar of a live chart — and is never
+ * bar3. Two deliberate deviations from the source:
  *
  * - The recent-bars scan cap (`InpBarLimit`, 120) is dropped — the scan covers
  *   every stored bar past the slow-EMA warm-up, so all detected zones are
@@ -17,12 +18,12 @@
  * - Bearish zones are detected but never drawn (rendering deviation only).
  */
 
-import { mt5Ema, mt5Stochastic } from "./mt5math.js";
+import { lowHighStochastic, smaSeededEma } from "./series-math.js";
 import { ZONE_PALETTE } from "./palette.js";
 import { registerIndicator } from "./registry.js";
 
-/* Every tunable in one place; mirrors the MQL5 inputs and their defaults
- * (minus the dropped bar limit). */
+/* Every tunable in one place; mirrors the source indicator's inputs and
+ * their defaults (minus the dropped bar limit). */
 export const FVG_PARAMS = {
   rectBars: 14, // zone validity window drawn forward from bar1
   gapVsBar2Range: 0.3, // 0 disables the ratio rule
@@ -114,7 +115,7 @@ export function spaceExtendedRange(bars, index) {
 export function fvgZones(bars, pointSize, params = FVG_PARAMS) {
   const n = bars.length;
 
-  // MT5 refuses to signal until the slow EMA has data; mirror that and say so,
+  // The source refuses to signal until the slow EMA has data; mirror that and say so,
   // because a chart with no zones is otherwise indistinguishable from a chart
   // with no qualifying patterns.
   const minBars = params.emaSlow + 3;
@@ -133,15 +134,15 @@ export function fvgZones(bars, pointSize, params = FVG_PARAMS) {
   const closes = bars.map((b) => b.close);
   const times = bars.map((b) => b.time);
 
-  const emaFast = mt5Ema(closes, params.emaFast);
-  const emaCenter = mt5Ema(closes, params.emaCenter);
-  const emaSlow = mt5Ema(closes, params.emaSlow);
-  const stoch = mt5Stochastic(highs, lows, closes, params.stochK, params.stochSlowing);
+  const emaFast = smaSeededEma(closes, params.emaFast);
+  const emaCenter = smaSeededEma(closes, params.emaCenter);
+  const emaSlow = smaSeededEma(closes, params.emaSlow);
+  const stoch = lowHighStochastic(highs, lows, closes, params.stochK, params.stochSlowing);
 
   const point = pointSize > 0 ? pointSize : 0.01;
   const labelOffset = 10 * point;
 
-  // bar3 candidates: newest stored bar excluded (it is MT5's forming bar), and
+  // bar3 candidates: newest stored bar excluded (the source's forming bar), and
   // bar3 needs the slow EMA seeded at its index plus two earlier bars.
   const j3Newest = n - 2;
   const j3Oldest = Math.max(2, params.emaSlow - 1);
@@ -245,7 +246,7 @@ export function fvgZones(bars, pointSize, params = FVG_PARAMS) {
 }
 
 /* Exported for the dev-time test harness. */
-export { mt5Ema, mt5Stochastic };
+export { lowHighStochastic, smaSeededEma };
 
 registerIndicator({
   id: "fvg",

@@ -3,7 +3,7 @@
 Dev-time only. Imports ``xtb_trading.indicators`` from the sibling reference
 repo (../xtb-trading) and records, for deterministic synthetic bar series:
 - the bars themselves,
-- MT5-seeded EMA arrays (13/89/377) and the stochastic array,
+- SMA-seeded EMA arrays (13/89/377) and the stochastic array,
 - the zones found with the scan cap disabled (bar_limit -> whole series),
 - the parameters used.
 
@@ -32,9 +32,9 @@ from xtb_trading.db import Bar  # noqa: E402
 from xtb_trading.indicators import (  # noqa: E402
     FvgParams,
     fvg_zones,
-    mt5_ema,
-    mt5_stochastic,
 )
+
+from reference_math import low_high_stochastic, sma_seeded_ema  # noqa: E402
 
 #: Effectively "no cap": the deviation the rebuild makes by design.
 NO_CAP = 10**9
@@ -113,11 +113,11 @@ def write_fixture(name: str, bars: list[Bar], point_size: float, params: FvgPara
             for b in bars
         ],
         "ema": {
-            str(p): nan_to_null(mt5_ema(closes_a, p))
+            str(p): nan_to_null(sma_seeded_ema(closes_a, p))
             for p in (params.ema_fast, params.ema_center, params.ema_slow)
         },
         "stoch": nan_to_null(
-            mt5_stochastic(highs_a, lows_a, closes_a, params.stoch_k, params.stoch_slowing)
+            low_high_stochastic(highs_a, lows_a, closes_a, params.stoch_k, params.stoch_slowing)
         ),
         "zones": [asdict(z) for z in zones],
         "warning": warning,
