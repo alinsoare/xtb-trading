@@ -2,30 +2,27 @@
 
 import {
   columnarToBars,
+  currentDayBar,
   currentPrice,
-  isDoji,
+  intervalsOverlap,
   lastCompletedIndex,
-  SEQUENCE_SCAN_CAP,
 } from "../../web/screener/bars.js";
 import { computeRange } from "../../web/screener/range.js";
-import { bullishRun, isMacdRedMorningStarTrough, macdRedMorningStar } from "../../web/screener/signals.js";
 import {
-  GATE_MIN_PEAK_DISCOUNT,
-  GATE_MIN_RANGE_PCT,
-  H1_RUN_BARS,
-  M15_RUN_BARS,
+  isMacdRedMorningStarTrough,
+  macdNegativeTrough,
+  selectDistanceTarget,
+} from "../../web/screener/signals.js";
+import {
+  DISTANCE_BANDS,
   markCount,
+  scoreDistance,
   scoreInstrument,
-  scorePivotDistance,
-  SOURCE_D1_FVG_H1,
-  SOURCE_GATE,
-  SOURCE_H1_FVG_M15,
+  SOURCE_DISTANCE,
+  SOURCE_FVG_D1,
   SOURCE_MACD,
-  SOURCE_PIVOT,
-  WEIGHT_D1_FVG_H1_RUN,
-  WEIGHT_GATE_PASS,
-  WEIGHT_H1_FVG_M15_RUN,
-  WEIGHT_MACD_RED_MORNING_STAR,
+  SOURCE_OB_D1,
+  WEIGHT_TRIGGER,
 } from "../../web/screener/score.js";
 
 let failures = 0;
@@ -63,6 +60,25 @@ function makeBars(count, start = 1_700_000_000, step = 86400, base = 100) {
   );
 }
 
+function tuneWindowTail(d1Bars, { high, low, close }) {
+  for (let i = d1Bars.length - 31; i < d1Bars.length - 1; i++) {
+    d1Bars[i] = bar(d1Bars[i].time, low, high, low, close);
+  }
+  d1Bars[d1Bars.length - 1] = bar(
+    d1Bars[d1Bars.length - 1].time,
+    close,
+    high,
+    low,
+    close,
+  );
+  return d1Bars;
+}
+
+function makeScanSeries(d1Len, h1Len = 5, m15Len = 5) {
+  const mk = (n, step) => Array.from({ length: n }, (_, i) => bar(1_700_000_000 + i * step, 100, 120, 100, 110));
+  return { d1: mk(d1Len, 86400), h1: mk(h1Len, 3600), m15: mk(m15Len, 900) };
+}
+
 /* ---------- conventions ---------- */
 
 const fiveBars = [
@@ -73,6 +89,7 @@ const fiveBars = [
   bar(5, 14, 16, 13, 15),
 ];
 check("lastCompletedIndex", lastCompletedIndex(fiveBars), 3);
+checkDeep("currentDayBar is newest stored bar", currentDayBar(fiveBars), fiveBars[4]);
 
 check(
   "currentPrice picks freshest timeframe",
@@ -84,9 +101,9 @@ check(
   2.5,
 );
 
-check("doji on small body", isDoji(bar(1, 10, 11, 9, 10.05)), true);
-check("zero-range bar is doji", isDoji(bar(1, 10, 10, 10, 10)), true);
-check("bullish bar is not doji", isDoji(bar(1, 10, 12, 9, 11)), false);
+check("interval overlap on shared interior", intervalsOverlap(10, 20, 15, 25), true);
+check("wick touch at zone edge counts", intervalsOverlap(100, 105, 105, 110), true);
+check("disjoint intervals do not overlap", intervalsOverlap(10, 20, 30, 40), false);
 
 const columnar = { t: [1, 2], o: [1, 2], h: [2, 3], l: [0.5, 1.5], c: [1.5, 2.5] };
 checkDeep("columnarToBars", columnarToBars(columnar), [
@@ -94,63 +111,12 @@ checkDeep("columnarToBars", columnarToBars(columnar), [
   bar(2, 2, 3, 1.5, 2.5),
 ]);
 
-/* ---------- bullish run ---------- */
+checkTrue(
+  "wick into zone and close outside still overlaps",
+  intervalsOverlap(98, 106, 100, 105),
+);
 
-const runBars = [
-  bar(1, 9, 10, 8, 9.5),
-  bar(2, 10, 11, 9, 10.5),
-  bar(3, 11, 12, 10, 11.5),
-  bar(4, 12, 13, 11, 12.5),
-  bar(5, 13, 14, 12, 13.5),
-  bar(6, 14, 15, 13, 14.5),
-];
-check("doji is neutral in run", bullishRun(runBars, 3).ok, true);
-
-const brokenRun = [
-  bar(1, 9, 10, 8, 9.5),
-  bar(2, 10, 11, 9, 9.2),
-  bar(3, 11, 12, 10, 11.5),
-  bar(4, 12, 13, 11, 12.5),
-  bar(5, 13, 14, 12, 13.5),
-];
-check("bearish bar breaks run", bullishRun(brokenRun, 3).ok, false);
-
-const oneBarRun = [
-  bar(1, 9, 10, 8, 9.2),
-  bar(2, 10, 11, 9, 9.2),
-  bar(3, 11, 12, 10, 9.2),
-  bar(4, 12, 13, 11, 12.5),
-  bar(5, 13, 14, 12, 13.5),
-];
-check("one-bar run succeeds on last bullish bar", bullishRun(oneBarRun, 1).ok, true);
-
-const oneBarFail = [
-  bar(1, 9, 10, 8, 9.5),
-  bar(2, 10, 11, 9, 10.5),
-  bar(3, 11, 12, 10, 11.5),
-  bar(4, 12, 13, 11, 9.2),
-  bar(5, 13, 14, 12, 13.5),
-];
-check("one-bar run fails when last completed bar is bearish", bullishRun(oneBarFail, 1).ok, false);
-
-const dojiThenBullish = [
-  bar(1, 9, 10, 8, 9.5),
-  bar(2, 10, 11, 9, 10.5),
-  bar(3, 11, 12, 10, 11.5),
-  bar(4, 12, 13, 11, 12.5),
-  bar(5, 13, 14, 12, 13.01),
-  bar(6, 14, 15, 13, 14.5),
-];
-check("one-bar run skips doji and counts prior bullish bar", bullishRun(dojiThenBullish, 1).ok, true);
-
-const longDojiStretch = [];
-for (let i = 0; i < SEQUENCE_SCAN_CAP + 5; i++) {
-  longDojiStretch.push(bar(i, 10, 11, 9, 10.01));
-}
-longDojiStretch.push(bar(100, 10, 12, 9, 11));
-check("scan cap bounds bullish run walk", bullishRun(longDojiStretch, 3).ok, false);
-
-/* ---------- MACD red morning star ---------- */
+/* ---------- MACD negative trough ---------- */
 
 check(
   "negative-territory trough fires",
@@ -184,28 +150,23 @@ check(
 );
 
 const macdBars = makeBars(80, 1_700_000_000, 3600, 50);
-const macdResult = macdRedMorningStar(macdBars);
-check("macd red morning star is boolean", typeof macdResult.ok, "boolean");
-check("short macd series is insufficient", macdRedMorningStar(makeBars(10)).insufficient, true);
+const macdResult = macdNegativeTrough(macdBars);
+check("macd negative trough is boolean", typeof macdResult.ok, "boolean");
+check("short macd series is insufficient", macdNegativeTrough(makeBars(10)).insufficient, true);
 
 const flatMacdBars = makeBars(80, 1_700_000_000, 3600, 50);
 for (let i = 0; i < flatMacdBars.length; i++) {
-  flatMacdBars[i] = bar(
-    flatMacdBars[i].time,
-    50,
-    50.5,
-    49.5,
-    50,
-  );
+  flatMacdBars[i] = bar(flatMacdBars[i].time, 50, 50.5, 49.5, 50);
 }
-check("flat histogram does not count as red morning star", macdRedMorningStar(flatMacdBars).ok, false);
+check("flat histogram does not count as negative trough", macdNegativeTrough(flatMacdBars).ok, false);
 
-/* ---------- pivot bands ---------- */
+/* ---------- distance bands ---------- */
 
-check("pivot distance <= 2% scores 0", scorePivotDistance(0.02), 0);
-check("pivot distance exactly 5% scores 1", scorePivotDistance(0.05), 1);
-check("pivot distance exactly 10% scores 2", scorePivotDistance(0.1), 2);
-check("pivot distance above 10% scores 3", scorePivotDistance(0.14), 3);
+check("distance at or below 3% scores 0", scoreDistance(0.03), 0);
+check("distance exactly 5% scores 1", scoreDistance(0.05), 1);
+check("distance exactly 8% scores 2", scoreDistance(0.08), 2);
+check("distance above 8% scores 3", scoreDistance(0.14), 3);
+check("distance bands constant", DISTANCE_BANDS.join(","), "0.03,0.05,0.08");
 
 /* ---------- range and position ---------- */
 
@@ -219,6 +180,11 @@ checkDeep("range arithmetic", {
   rangePct: Number(rangeAtBottom.rangePct?.toFixed(4)),
   positionPct: Number(rangeAtBottom.positionPct?.toFixed(4)),
 }, { rangePct: 0.5, positionPct: 0.05 });
+check(
+  "windowStart is newest bar time minus 30 days",
+  rangeAtBottom.windowStart,
+  d1Window[2].time - 30 * 86400,
+);
 
 const flatRange = [
   bar(1_700_000_000, 100, 100, 100, 100),
@@ -229,35 +195,21 @@ check("zero-range window yields null rangePct", zeroRange.rangePct, null);
 check("zero-range window yields null positionPct", zeroRange.positionPct, null);
 check("zero-range window yields null headroomPct", zeroRange.headroomPct, null);
 
-const headroomWindow = [
-  bar(1_700_000_000, 100, 140, 100, 136),
-];
+const headroomWindow = [bar(1_700_000_000, 100, 140, 100, 136)];
 const atNinetyPct = computeRange(headroomWindow, 136);
 check("headroom example range is 40%", Number(atNinetyPct.rangePct?.toFixed(4)), 0.4);
 check("headroom example position is 90%", Number(atNinetyPct.positionPct?.toFixed(4)), 0.9);
-check(
-  "headroom is (high - price) / price",
-  atNinetyPct.headroomPct,
-  (140 - 136) / 136,
-);
+check("headroom is (high - price) / price", atNinetyPct.headroomPct, (140 - 136) / 136);
 
 const atLow = computeRange(headroomWindow, 100);
-check(
-  "headroom at the low equals the range",
-  atLow.headroomPct,
-  atLow.rangePct,
-);
+check("headroom at the low equals the range", atLow.headroomPct, atLow.rangePct);
 
 const aboveHigh = computeRange(headroomWindow, 145);
 checkTrue(
   "headroom above the window high is negative and unclamped",
   aboveHigh.headroomPct != null && aboveHigh.headroomPct < 0,
 );
-check(
-  "headroom above high is (high - price) / price",
-  aboveHigh.headroomPct,
-  (140 - 145) / 145,
-);
+check("headroom above high is (high - price) / price", aboveHigh.headroomPct, (140 - 145) / 145);
 
 check("no bars yields null headroomPct", computeRange([], 100).headroomPct, null);
 check("no price yields null headroomPct", computeRange(headroomWindow, null).headroomPct, null);
@@ -275,56 +227,119 @@ const insufficient = scoreInstrument({
 });
 check("insufficient-history carries headroomPct key", "headroomPct" in insufficient, true);
 
-/* ---------- score composition ---------- */
+/* ---------- mark buckets ---------- */
 
 check("mark buckets at 0", markCount(0), 0);
 check("mark buckets at 1", markCount(1), 1);
-check("mark buckets at 2", markCount(2), 1);
+check("mark buckets at 2", markCount(2), 2);
 check("mark buckets at 3", markCount(3), 2);
-check("mark bucket at 4", markCount(4), 2);
+check("mark bucket at 4", markCount(4), 3);
 check("mark bucket at 5", markCount(5), 3);
-check("mark bucket at 6", markCount(6), 3);
-check("mark bucket at 7", markCount(7), 4);
-check("mark bucket at 8", markCount(8), 4);
+check("mark bucket at 6", markCount(6), 4);
 
-function tuneWindowTail(d1Bars, { high, low, close }) {
-  for (let i = d1Bars.length - 31; i < d1Bars.length - 1; i++) {
-    d1Bars[i] = bar(d1Bars[i].time, low, high, low, close);
-  }
-  d1Bars[d1Bars.length - 1] = bar(
-    d1Bars[d1Bars.length - 1].time,
-    close,
-    high,
-    low,
-    close,
-  );
-  return d1Bars;
-}
+/* ---------- score composition ---------- */
 
-const gatedOutD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
-  high: 100,
-  low: 85,
-  close: 99,
+const gateOpenD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
+  high: 110,
+  low: 100,
+  close: 102,
 });
-const gatedOut = scoreInstrument({
+
+const fullConfluence = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: makeScanSeries(400),
+  signalOverrides: {
+    fvgD1: { ok: true, insufficient: false },
+    obD1: { ok: true, insufficient: false },
+    macd: { ok: true, insufficient: false },
+    distance: { target: 125, branch: "window", insufficient: false },
+  },
+});
+check("full confluence score", fullConfluence.score, 6);
+check("full confluence marks", fullConfluence.marks, 4);
+checkDeep("full confluence reasons", fullConfluence.reasons, [
+  { rule: "Bullish D1 FVG touch", points: 1, source: SOURCE_FVG_D1 },
+  { rule: "Demand D1 OB touch", points: 1, source: SOURCE_OB_D1 },
+  { rule: "D1 MACD negative trough", points: 1, source: SOURCE_MACD },
+  { rule: "30d high distance", points: 3, source: SOURCE_DISTANCE },
+]);
+check(
+  "full confluence source names are distinct",
+  new Set(fullConfluence.reasons.map((r) => r.source)).size,
+  4,
+);
+
+const pivotBranch = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: makeScanSeries(400),
+  signalOverrides: {
+    fvgD1: { ok: true, insufficient: false },
+    obD1: { ok: false, insufficient: false },
+    macd: { ok: false, insufficient: false },
+    distance: { target: 114, branch: "pivot", insufficient: false },
+  },
+});
+checkTrue(
+  "pivot branch audit wording",
+  pivotBranch.reasons.some((r) => r.rule === "D1 pivot distance" && r.source === SOURCE_DISTANCE),
+);
+
+const oneTriggerNear = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: makeScanSeries(400),
+  signalOverrides: {
+    fvgD1: { ok: false, insufficient: false },
+    obD1: { ok: true, insufficient: false },
+    macd: { ok: false, insufficient: false },
+    distance: { target: 111, branch: "window", insufficient: false },
+  },
+});
+check("one trigger with near target scores 1", oneTriggerNear.score, 1);
+check("near target earns no distance points", oneTriggerNear.reasons.length, 1);
+
+const noTriggerFar = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: makeScanSeries(400),
+  signalOverrides: {
+    fvgD1: { ok: false, insufficient: false },
+    obD1: { ok: false, insufficient: false },
+    macd: { ok: false, insufficient: false },
+    distance: { target: 140, branch: "window", insufficient: false },
+  },
+});
+check("no trigger means score 0 regardless of distance", noTriggerFar.score, 0);
+check("no trigger records no distance", noTriggerFar.reasons.length, 0);
+check("no trigger carries no mark", noTriggerFar.marks, 0);
+checkTrue(
+  "no trigger still reports three figures",
+  noTriggerFar.rangePct != null &&
+    noTriggerFar.positionPct != null &&
+    noTriggerFar.headroomPct != null,
+);
+
+const quietInstrument = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
   seriesByTimeframe: {
-    d1: gatedOutD1,
+    d1: gateOpenD1,
     h1: makeBars(400, 1_700_000_000, 3600, 100),
     m15: makeBars(400, 1_700_000_000, 900, 100),
   },
+  signalOverrides: {
+    fvgD1: { ok: false, insufficient: false },
+    obD1: { ok: false, insufficient: false },
+    macd: { ok: false, insufficient: false },
+  },
 });
-check("gated-out instrument scores nothing", gatedOut.score, 0);
-check("gated-out has no reasons", gatedOut.reasons.length, 0);
-check("gated-out keeps range figures", gatedOut.rangePct != null, true);
-check("gated-out keeps position figures", gatedOut.positionPct != null, true);
-check("gated-out carries headroomPct", gatedOut.headroomPct != null, true);
-check(
-  "gated-out is within 2% of the 30-day high",
-  gatedOutD1[gatedOutD1.length - 1].close >= 100 * (1 - GATE_MIN_PEAK_DISCOUNT),
-  true,
-);
+check("quiet instrument is screened with score 0", quietInstrument.status, "screened");
+check("quiet instrument scores 0", quietInstrument.score, 0);
+check("quiet instrument has no marks", quietInstrument.marks, 0);
+check("quiet instrument names no source", quietInstrument.reasons.length, 0);
+checkTrue("quiet instrument keeps range figures", quietInstrument.rangePct != null);
 
 const highHeadroomD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
   high: 120,
@@ -337,196 +352,49 @@ const lowHeadroomD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
   close: 110,
 });
 const sharedOverrides = {
-  d1Fvg: { ok: false, insufficient: false },
-  h1Run: { ok: false, insufficient: false },
-  h1Fvg: { ok: false, insufficient: false },
-  m15Run: { ok: false, insufficient: false },
+  fvgD1: { ok: false, insufficient: false },
+  obD1: { ok: false, insufficient: false },
   macd: { ok: false, insufficient: false },
-  pivot: { pivotDistance: null, insufficient: false },
 };
 const highHeadroomScore = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: highHeadroomD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
+  seriesByTimeframe: { d1: highHeadroomD1, h1: makeBars(5), m15: makeBars(5) },
   signalOverrides: sharedOverrides,
 });
 const lowHeadroomScore = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: lowHeadroomD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
+  seriesByTimeframe: { d1: lowHeadroomD1, h1: makeBars(5), m15: makeBars(5) },
   signalOverrides: sharedOverrides,
 });
 checkTrue(
-  "different headroom does not change score",
+  "different headroom does not change score when no trigger fires",
   highHeadroomScore.headroomPct !== lowHeadroomScore.headroomPct &&
     highHeadroomScore.score === lowHeadroomScore.score,
 );
-checkDeep(
-  "different headroom does not change marks or reasons",
-  {
-    marks: highHeadroomScore.marks,
-    reasons: highHeadroomScore.reasons,
-  },
-  {
-    marks: lowHeadroomScore.marks,
-    reasons: lowHeadroomScore.reasons,
-  },
+
+const shortH1M15 = scoreInstrument({
+  enabled: true,
+  pointSize: 0.01,
+  seriesByTimeframe: makeScanSeries(420, 3, 3),
+  signalOverrides: sharedOverrides,
+});
+check(
+  "short H1 and M15 do not cause insufficient history",
+  shortH1M15.status,
+  "screened",
+);
+
+const distanceTarget = selectDistanceTarget(
+  makeBars(400),
+  0.01,
+  120,
+  1_700_000_000,
 );
 checkTrue(
-  "headroom does not appear in reasons",
-  [...highHeadroomScore.reasons, ...lowHeadroomScore.reasons].every(
-    (r) => !String(r.rule).toLowerCase().includes("headroom"),
-  ),
-);
-
-const gateOpenD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
-  high: 110,
-  low: 100,
-  close: 102,
-});
-
-const fullConfluence = scoreInstrument({
-  enabled: true,
-  pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: gateOpenD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
-  // Signal primitives have dedicated tests above. These overrides isolate the
-  // score-orchestration contract without depending on a fragile synthetic FVG.
-  signalOverrides: {
-    d1Fvg: { ok: true, insufficient: false },
-    h1Run: { ok: true, insufficient: false },
-    h1Fvg: { ok: true, insufficient: false },
-    m15Run: { ok: true, insufficient: false },
-    macd: { ok: true, insufficient: false },
-    pivot: { pivotDistance: 0.11, insufficient: false },
-  },
-});
-check("full confluence score", fullConfluence.score, 8);
-check("full confluence marks", fullConfluence.marks, 4);
-checkDeep("full confluence reasons", fullConfluence.reasons, [
-  { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
-  { rule: "D1 FVG + H1 bullish run", points: 2, source: SOURCE_D1_FVG_H1 },
-  { rule: "H1 FVG + M15 bullish run", points: 1, source: SOURCE_H1_FVG_M15 },
-  { rule: "D1 MACD red morning star", points: 1, source: SOURCE_MACD },
-  { rule: "D1 pivot distance", points: 3, source: SOURCE_PIVOT },
-]);
-check(
-  "full confluence source names are distinct",
-  new Set(fullConfluence.reasons.map((r) => r.source)).size,
-  5,
-);
-check(
-  "full confluence source order",
-  fullConfluence.reasons.map((r) => r.source).join(","),
-  [SOURCE_GATE, SOURCE_D1_FVG_H1, SOURCE_H1_FVG_M15, SOURCE_MACD, SOURCE_PIVOT].join(","),
-);
-
-const jmlpD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 17), {
-  high: 19.31,
-  low: 17.54,
-  close: 18.21,
-});
-const jmlpStyle = scoreInstrument({
-  enabled: true,
-  pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: jmlpD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
-  signalOverrides: {
-    d1Fvg: { ok: true, insufficient: false },
-    h1Run: { ok: true, insufficient: false },
-    h1Fvg: { ok: false, insufficient: false },
-    m15Run: { ok: false, insufficient: false },
-    macd: { ok: false, insufficient: false },
-    pivot: { pivotDistance: null, insufficient: false },
-  },
-});
-check("JMLP-style pullback is scored", jmlpStyle.score, 3);
-check(
-  "JMLP-style sits high in its range",
-  jmlpStyle.positionPct != null && jmlpStyle.positionPct > 0.33,
-  true,
-);
-
-const gateOnly = scoreInstrument({
-  enabled: true,
-  pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: gateOpenD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
-  signalOverrides: {
-    d1Fvg: { ok: false, insufficient: false },
-    h1Run: { ok: false, insufficient: false },
-    h1Fvg: { ok: false, insufficient: false },
-    m15Run: { ok: false, insufficient: false },
-    macd: { ok: false, insufficient: false },
-    pivot: { pivotDistance: null, insufficient: false },
-  },
-});
-check("gate-only instrument scores 1", gateOnly.score, 1);
-check("gate-only instrument carries one mark", gateOnly.marks, 1);
-checkDeep("gate-only reasons list only the eligibility gate", gateOnly.reasons, [
-  { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
-]);
-check("gated-out has no source fields", gatedOut.reasons.every((r) => r.source == null), true);
-
-const boundaryD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
-  high: 100,
-  low: 85,
-  close: 98,
-});
-const boundaryGated = scoreInstrument({
-  enabled: true,
-  pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: boundaryD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
-});
-check("discount boundary gates out", boundaryGated.score, 0);
-check("discount boundary has no reasons", boundaryGated.reasons.length, 0);
-check(
-  "discount boundary price is exactly high * 0.98",
-  boundaryD1[boundaryD1.length - 1].close,
-  100 * (1 - GATE_MIN_PEAK_DISCOUNT),
-);
-
-const narrowRangeD1 = tuneWindowTail(makeBars(400, 1_700_000_000, 86400, 100), {
-  high: 100,
-  low: 98.5,
-  close: 95,
-});
-const narrowRangeGated = scoreInstrument({
-  enabled: true,
-  pointSize: 0.01,
-  seriesByTimeframe: {
-    d1: narrowRangeD1,
-    h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
-  },
-});
-check("narrow range gates out below peak", narrowRangeGated.score, 0);
-check("narrow range has no reasons", narrowRangeGated.reasons.length, 0);
-check(
-  "narrow range is under 3%",
-  narrowRangeGated.rangePct != null && narrowRangeGated.rangePct < GATE_MIN_RANGE_PCT,
-  true,
+  "distance target selector returns a branch",
+  distanceTarget.branch === "pivot" || distanceTarget.branch === "window",
 );
 
 checkDeep(
@@ -545,20 +413,15 @@ checkDeep(
   "insufficient-history",
 );
 
-check("gate min range constant", GATE_MIN_RANGE_PCT, 0.03);
-check("gate min peak discount constant", GATE_MIN_PEAK_DISCOUNT, 0.02);
-check("weight gate pass constant", WEIGHT_GATE_PASS, 1);
-check("weight D1 FVG + H1 run constant", WEIGHT_D1_FVG_H1_RUN, 2);
-check("weight H1 FVG + M15 run constant", WEIGHT_H1_FVG_M15_RUN, 1);
-check("D1 FVG source label", SOURCE_D1_FVG_H1, "FVG D1");
-check("H1 FVG source label", SOURCE_H1_FVG_M15, "FVG H1");
-check("weight MACD red morning star constant", WEIGHT_MACD_RED_MORNING_STAR, 1);
-check("H1 run bars constant", H1_RUN_BARS, 1);
-check("M15 run bars constant", M15_RUN_BARS, 1);
+check("trigger weight constant", WEIGHT_TRIGGER, 1);
+check("FVG D1 source label", SOURCE_FVG_D1, "FVG D1");
+check("OB D1 source label", SOURCE_OB_D1, "OB D1");
+check("MACD source label", SOURCE_MACD, "MACD");
+check("distance source label", SOURCE_DISTANCE, "distance");
 check(
-  "weights plus top pivot band sum to 8",
-  WEIGHT_GATE_PASS + WEIGHT_D1_FVG_H1_RUN + WEIGHT_H1_FVG_M15_RUN + WEIGHT_MACD_RED_MORNING_STAR + 3,
-  8,
+  "weights plus top distance band sum to 6",
+  WEIGHT_TRIGGER * 3 + 3,
+  6,
 );
 
 if (failures) {

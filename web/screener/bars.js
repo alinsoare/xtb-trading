@@ -1,12 +1,10 @@
 /* Shared bar-reading conventions for the accumulation screener.
  *
- * Every signal imports from here so the forming-bar rule, current price, doji
- * test and columnar conversion cannot drift apart.
+ * Every signal imports from here so the forming-bar rule, current price, touch
+ * geometry and columnar conversion cannot drift apart.
  */
 
 export const SCAN_TIMEFRAMES = ["m15", "h1", "d1"];
-export const DOJI_BODY_RATIO = 0.1;
-export const SEQUENCE_SCAN_CAP = 8;
 export const RANGE_WINDOW_DAYS = 30;
 
 /** Last completed bar index. Matches j3Newest in fvg.js and lastCompletedJs in ob-structure.js. */
@@ -30,10 +28,19 @@ export function currentPrice(seriesByTimeframe) {
   return price;
 }
 
-export function isDoji(bar) {
-  const range = bar.high - bar.low;
-  if (range <= 0) return true;
-  return Math.abs(bar.close - bar.open) <= DOJI_BODY_RATIO * range;
+/**
+ * Current-day touch exception: the newest stored bar of a series. Zone triggers
+ * ask whether price is interacting with structure right now, so they read
+ * today's developing bar rather than the last completed one.
+ */
+export function currentDayBar(bars) {
+  if (!bars?.length) return null;
+  return bars[bars.length - 1];
+}
+
+/** Inclusive overlap between a bar's high-to-low interval and a zone's price interval. */
+export function intervalsOverlap(barLow, barHigh, zoneLow, zoneHigh) {
+  return barLow <= zoneHigh && barHigh >= zoneLow;
 }
 
 export function columnarToBars(payloadSeries) {

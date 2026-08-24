@@ -1,77 +1,4 @@
-# accumulation-screener Specification
-
-## Purpose
-
-Scores every enabled instrument against its stored bars to flag mean-reversion accumulation candidates, reporting the 30-day range, the position inside it, and a confluence score with the reasons behind it — facts only, never a recommendation.
-
-## Requirements
-
-### Requirement: Screening runs on load against stored data only
-
-The screener SHALL score every enabled instrument when the app loads, without the user asking
-for it, and SHALL do so entirely from locally stored bars. Screening SHALL NOT trigger any
-market-data fetch, so it changes nothing about how fresh the data is: scores are exactly as
-stale as the last sync the user asked for. Screening SHALL report progress while it runs, and
-the sidebar SHALL remain usable — searchable, filterable and clickable — throughout.
-
-A scan SHALL NOT be re-run merely because the user filtered the list, selected an instrument,
-switched timeframe, or toggled an indicator.
-
-#### Scenario: Scores appear without a fetch
-
-- **WHEN** the app loads and screens the catalog
-- **THEN** the only market-data request made is for the screening payload itself, no sync runs, and no instrument's stored bars change
-
-#### Scenario: The list works while the scan runs
-
-- **WHEN** the user types a search query while screening is still in progress
-- **THEN** the list filters immediately and the scan continues, filling in marks as they are computed
-
-#### Scenario: Progress is visible
-
-- **WHEN** screening is running over the catalog
-- **THEN** the UI reports its progress, and the report ends when the last instrument is scored
-
-### Requirement: Screening payload
-
-A screening payload SHALL be served by the dev backend and written by the exporter as one
-file with identical content, so screening behaves the same with a backend and on the static
-site. It SHALL carry, for each **enabled** instrument, the most recent bars of M15, H1 and D1
-up to a fixed per-timeframe cap, with each bar's timestamp, open, high, low and close.
-
-The cap SHALL be 420 bars per timeframe — enough for every signal's warm-up with room for a
-zone detected before the warm-up boundary to still be live at the newest bar — and a series
-holding fewer bars SHALL be served in full rather than padded.
-
-The payload SHALL be retrievable in a single request for the whole catalog, because screening
-44 instruments across 3 timeframes through the per-symbol chart files would cost over a
-hundred requests and roughly 15 MB. Volume SHALL be omitted, since no screening signal uses
-it. Disabled instruments SHALL be absent from the payload.
-
-#### Scenario: One request covers the catalog
-
-- **WHEN** the app screens the catalog
-- **THEN** it retrieves the bars for every enabled instrument and all three timeframes in a single request
-
-#### Scenario: Bars are capped
-
-- **WHEN** an instrument's stored D1 series holds 4,000 bars
-- **THEN** the payload carries its 420 most recent D1 bars and none older
-
-#### Scenario: A short series is served whole
-
-- **WHEN** an instrument's stored H1 series holds 90 bars
-- **THEN** the payload carries all 90 of them
-
-#### Scenario: Disabled instruments are excluded
-
-- **WHEN** an instrument is disabled in the catalog
-- **THEN** it is absent from the payload
-
-#### Scenario: The static site screens identically
-
-- **WHEN** the same data store is served by the dev backend and exported to the static site
-- **THEN** both produce the same payload content and therefore the same scores
+## ADDED Requirements
 
 ### Requirement: Thirty-day window figures
 
@@ -480,6 +407,8 @@ to sync.
 - **THEN** the source line does not state how many points the distance contributed, and that number is
   still reachable through the on-demand audit on the marks
 
+## MODIFIED Requirements
+
 ### Requirement: Instruments that cannot be screened say so
 
 An instrument the screener cannot score for a structural reason SHALL be distinguished from one
@@ -568,3 +497,57 @@ produce, and this SHALL NOT require the user to sync.
   instrument has synced since
 - **THEN** the catalog is re-screened under the current model, and no row shows a score, a mark count
   or a source the current model cannot produce
+
+## REMOVED Requirements
+
+### Requirement: Screening gate
+
+**Reason**: The gate is removed in full — both the 1 point it contributed and its role as a hard gate.
+Instruments are no longer made eligible or ineligible before scoring, so nothing remains of the range
+and peak-discount conditions. The 30-day window survives only to feed the reported figures and the
+distance component's fallback target.
+
+**Migration**: The range, position and headroom reporting this requirement also carried moves,
+unchanged in meaning, to the new "Thirty-day window figures" requirement. Nothing replaces the
+eligibility conditions: every readable instrument is now scored, and a score of zero replaces the
+gated-out outcome.
+
+### Requirement: Screening reads shared bar conventions
+
+**Reason**: The convention set changes shape. The **Doji** and **Bullish run** conventions have no
+remaining consumer, since no scoring rule reads a bullish run any more, and the set gains a named
+exception to the forming-bar convention for the current-day touch test plus explicit touch geometry.
+Two of its scenarios describe doji and bullish-run behaviour that no longer exists.
+
+**Migration**: Replaced by "Screening reads shared bar conventions and the current-day touch
+exception", which keeps the forming-bar, current-price, live-zone and 30-day-window conventions and the
+named-constant rule verbatim in substance.
+
+### Requirement: Screening signals and score
+
+**Reason**: Every component is replaced. The gate point, the D1-gap-plus-H1-run component, the
+H1-gap-plus-M15-run component, the exact-three-bar MACD shape test and the 2%/5%/10% pivot bands all
+go, and the maximum falls from 8 to 6. Almost every scenario describes a rule that no longer exists.
+
+**Migration**: Replaced by "Screening triggers and score" — three D1 triggers worth +1 each and a
+conditional distance component worth 0 to 3, evaluated only when a trigger fired.
+
+### Requirement: Marks are graded, not ranked
+
+**Reason**: The mark buckets change with the new maximum of 6, and the guarantee that a screened
+instrument always carries at least one mark is withdrawn along with the gate's automatic point.
+
+**Migration**: Replaced by "Marks are graded, and absent when nothing fired", which keeps identical
+marks and the no-recommendation rule while restating the buckets as 1 → one mark, 2–3 → two, 4–5 →
+three, 6 → four.
+
+### Requirement: Sources are named beneath the marks
+
+**Reason**: The set of sources changes, the eligibility-gate source disappears, the `FVG H1` source
+disappears, an `OB D1` source appears, the pivot source becomes a branch-independent distance label,
+and the requirement's repeated "always names at least its eligibility gate" guarantee is withdrawn.
+Most of its scenarios name sources or a gate that no longer exist.
+
+**Migration**: Replaced by "Sources are named beneath the marks for every component that fired", which
+keeps the beneath-the-marks placement, the uniform presentation, the distinctness and stability rules,
+the points-stay-in-the-audit rule and the recompute-before-display rule.

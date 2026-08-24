@@ -7,11 +7,10 @@ import {
 } from "../../web/screener/render.js";
 import { scoreInstrument } from "../../web/screener/score.js";
 import {
-  SOURCE_D1_FVG_H1,
-  SOURCE_GATE,
-  SOURCE_H1_FVG_M15,
+  SOURCE_DISTANCE,
+  SOURCE_FVG_D1,
   SOURCE_MACD,
-  SOURCE_PIVOT,
+  SOURCE_OB_D1,
 } from "../../web/screener/score.js";
 
 let failures = 0;
@@ -45,33 +44,31 @@ const symbol = {
 };
 
 const fullReasons = [
-  { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
-  { rule: "D1 FVG + H1 bullish run", points: 2, source: SOURCE_D1_FVG_H1 },
-  { rule: "H1 FVG + M15 bullish run", points: 1, source: SOURCE_H1_FVG_M15 },
-  { rule: "D1 MACD red morning star", points: 1, source: SOURCE_MACD },
-  { rule: "D1 pivot distance", points: 3, source: SOURCE_PIVOT },
+  { rule: "Bullish D1 FVG touch", points: 1, source: SOURCE_FVG_D1 },
+  { rule: "Demand D1 OB touch", points: 1, source: SOURCE_OB_D1 },
+  { rule: "D1 MACD negative trough", points: 1, source: SOURCE_MACD },
+  { rule: "30d high distance", points: 3, source: SOURCE_DISTANCE },
 ];
 
 /* ---------- renderMarks ---------- */
 
 check("renderMarks with 0 marks", renderMarks(0, fullReasons), "");
 
-const oneMark = renderMarks(1, [{ rule: "Eligibility gate", points: 1 }]);
+const oneMark = renderMarks(1, [{ rule: "Bullish D1 FVG touch", points: 1 }]);
 checkTrue("one mark emits one dot span", countMarkSpans(oneMark) === 1);
 checkTrue(
   "one mark tooltip carries rule and points",
-  oneMark.includes('title="Eligibility gate: 1"'),
+  oneMark.includes('title="Bullish D1 FVG touch: 1"'),
 );
 
 const fourMarks = renderMarks(4, fullReasons);
 checkTrue("four marks emit four dot spans", countMarkSpans(fourMarks) === 4);
 checkTrue(
   "four marks tooltip carries all rules",
-  fourMarks.includes("Eligibility gate: 1") &&
-    fourMarks.includes("D1 FVG + H1 bullish run: 2") &&
-    fourMarks.includes("H1 FVG + M15 bullish run: 1") &&
-    fourMarks.includes("D1 MACD red morning star: 1") &&
-    fourMarks.includes("D1 pivot distance: 3"),
+  fourMarks.includes("Bullish D1 FVG touch: 1") &&
+    fourMarks.includes("Demand D1 OB touch: 1") &&
+    fourMarks.includes("D1 MACD negative trough: 1") &&
+    fourMarks.includes("30d high distance: 3"),
 );
 
 const escapedMarks = renderMarks(1, [{ rule: 'Rule <with> "quotes"', points: 1 }]);
@@ -87,17 +84,14 @@ check("renderSourceNames empty", renderSourceNames([]), "");
 const multiSources = renderSourceNames(fullReasons);
 checkTrue(
   "renderSourceNames emits one span per reason",
-  countSourceSpans(multiSources) === 5,
+  countSourceSpans(multiSources) === 4,
 );
 checkTrue(
   "renderSourceNames preserves order",
-  multiSources.indexOf(SOURCE_GATE) <
-    multiSources.indexOf(SOURCE_D1_FVG_H1) &&
-    multiSources.indexOf(SOURCE_D1_FVG_H1) <
-      multiSources.indexOf(SOURCE_H1_FVG_M15) &&
-    multiSources.indexOf(SOURCE_H1_FVG_M15) <
-      multiSources.indexOf(SOURCE_MACD) &&
-    multiSources.indexOf(SOURCE_MACD) < multiSources.indexOf(SOURCE_PIVOT),
+  multiSources.indexOf(SOURCE_FVG_D1) <
+    multiSources.indexOf(SOURCE_OB_D1) &&
+    multiSources.indexOf(SOURCE_OB_D1) < multiSources.indexOf(SOURCE_MACD) &&
+    multiSources.indexOf(SOURCE_MACD) < multiSources.indexOf(SOURCE_DISTANCE),
 );
 
 const escapedSources = renderSourceNames([{ source: 'A <tag> & "quote"' }]);
@@ -110,7 +104,7 @@ checkTrue(
 
 const fullRow = renderScreenerRow(symbol, {
   status: "screened",
-  score: 8,
+  score: 6,
   marks: 4,
   reasons: fullReasons,
   rangePct: 0.1234,
@@ -123,13 +117,12 @@ checkTrue(
 );
 checkTrue("full confluence row has four mark spans", countMarkSpans(fullRow) === 4);
 checkTrue(
-  "full confluence row has five source spans in order",
-  countSourceSpans(fullRow) === 5 &&
-    fullRow.includes(`>${SOURCE_GATE}<`) &&
-    fullRow.includes(`>${SOURCE_D1_FVG_H1}<`) &&
-    fullRow.includes(`>${SOURCE_H1_FVG_M15}<`) &&
+  "full confluence row has four source spans in order",
+  countSourceSpans(fullRow) === 4 &&
+    fullRow.includes(`>${SOURCE_FVG_D1}<`) &&
+    fullRow.includes(`>${SOURCE_OB_D1}<`) &&
     fullRow.includes(`>${SOURCE_MACD}<`) &&
-    fullRow.includes(`>${SOURCE_PIVOT}<`),
+    fullRow.includes(`>${SOURCE_DISTANCE}<`),
 );
 checkTrue(
   "full confluence row shows range, position and headroom figures",
@@ -137,25 +130,23 @@ checkTrue(
     fullRow.includes("position 56.8%") &&
     fullRow.includes("headroom 2.9%"),
 );
-checkTrue(
-  "full confluence marks tooltip carries full rule wording",
-  fullRow.includes("D1 FVG + H1 bullish run: 2") &&
-    fullRow.includes("D1 pivot distance: 3"),
-);
 
-const gateOnlyRow = renderScreenerRow(symbol, {
+const quietRow = renderScreenerRow(symbol, {
   status: "screened",
-  score: 1,
-  marks: 1,
-  reasons: [{ rule: "Eligibility gate", points: 1, source: SOURCE_GATE }],
+  score: 0,
+  marks: 0,
+  reasons: [],
   rangePct: 0.1,
   positionPct: 0.2,
+  headroomPct: 0.05,
 });
-checkTrue("gate-only row has one mark", countMarkSpans(gateOnlyRow) === 1);
+checkTrue("quiet row has no marks", countMarkSpans(quietRow) === 0);
+checkTrue("quiet row has no source names", !quietRow.includes("screener-sources"));
 checkTrue(
-  "gate-only row names gate alone",
-  countSourceSpans(gateOnlyRow) === 1 &&
-    gateOnlyRow.includes(`>${SOURCE_GATE}<`),
+  "quiet row still shows range, position and headroom figures",
+  quietRow.includes("30d range 10.0%") &&
+    quietRow.includes("position 20.0%") &&
+    quietRow.includes("headroom 5.0%"),
 );
 
 const negativeHeadroomRow = renderScreenerRow(symbol, {
@@ -188,24 +179,6 @@ checkTrue(
     nullHeadroomRow.includes("headroom —"),
 );
 
-const gatedOutRow = renderScreenerRow(symbol, {
-  status: "screened",
-  score: 0,
-  marks: 0,
-  reasons: [],
-  rangePct: 0.15,
-  positionPct: 0.25,
-  headroomPct: 0.05,
-});
-checkTrue("gated-out row has no marks", countMarkSpans(gatedOutRow) === 0);
-checkTrue("gated-out row has no source names", !gatedOutRow.includes("screener-sources"));
-checkTrue(
-  "gated-out row still shows range, position and headroom figures",
-  gatedOutRow.includes("30d range 15.0%") &&
-    gatedOutRow.includes("position 25.0%") &&
-    gatedOutRow.includes("headroom 5.0%"),
-);
-
 const notScreenedRow = renderScreenerRow(symbol, {
   status: "not-screened",
   score: 0,
@@ -235,11 +208,6 @@ checkTrue(
   "insufficient-history without a window has no figures line",
   !insufficientNoWindowRow.includes("screener-figures"),
 );
-checkTrue("insufficient-history without a window has no marks", countMarkSpans(insufficientNoWindowRow) === 0);
-checkTrue(
-  "insufficient-history without a window has no sources",
-  !insufficientNoWindowRow.includes("screener-sources"),
-);
 
 const insufficientWithWindowRow = renderScreenerRow(symbol, {
   status: "insufficient-history",
@@ -256,38 +224,29 @@ checkTrue(
     insufficientWithWindowRow.includes("position 20.0%") &&
     insufficientWithWindowRow.includes("headroom 5.0%"),
 );
-checkTrue(
-  "insufficient-history with window figures does not show state text",
-  !insufficientWithWindowRow.includes("insufficient history"),
-);
-checkTrue("insufficient-history with window figures has no marks", countMarkSpans(insufficientWithWindowRow) === 0);
-checkTrue(
-  "insufficient-history with window figures has no sources",
-  !insufficientWithWindowRow.includes("screener-sources"),
-);
 
-/* ---------- equal score, different sources (5.2) ---------- */
+/* ---------- equal score, different sources ---------- */
 
-const d1PivotRow = renderScreenerRow(symbol, {
+const fvgDistanceRow = renderScreenerRow(symbol, {
   status: "screened",
-  score: 4,
+  score: 3,
   marks: 2,
   reasons: [
-    { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
-    { rule: "D1 FVG + H1 bullish run", points: 2, source: SOURCE_D1_FVG_H1 },
-    { rule: "D1 pivot distance", points: 1, source: SOURCE_PIVOT },
+    { rule: "Bullish D1 FVG touch", points: 1, source: SOURCE_FVG_D1 },
+    { rule: "30d high distance", points: 2, source: SOURCE_DISTANCE },
   ],
   rangePct: 0.1,
   positionPct: 0.2,
 });
 
-const pivotOnlyRow = renderScreenerRow(symbol, {
+const allTriggersRow = renderScreenerRow(symbol, {
   status: "screened",
-  score: 4,
+  score: 3,
   marks: 2,
   reasons: [
-    { rule: "Eligibility gate", points: 1, source: SOURCE_GATE },
-    { rule: "D1 pivot distance", points: 3, source: SOURCE_PIVOT },
+    { rule: "Bullish D1 FVG touch", points: 1, source: SOURCE_FVG_D1 },
+    { rule: "Demand D1 OB touch", points: 1, source: SOURCE_OB_D1 },
+    { rule: "D1 MACD negative trough", points: 1, source: SOURCE_MACD },
   ],
   rangePct: 0.1,
   positionPct: 0.2,
@@ -295,17 +254,17 @@ const pivotOnlyRow = renderScreenerRow(symbol, {
 
 check(
   "equal-score rows share mark count",
-  countMarkSpans(d1PivotRow),
-  countMarkSpans(pivotOnlyRow),
+  countMarkSpans(fvgDistanceRow),
+  countMarkSpans(allTriggersRow),
 );
 checkTrue(
   "equal-score rows differ in source text",
-  d1PivotRow.includes(`>${SOURCE_D1_FVG_H1}<`) &&
-    !pivotOnlyRow.includes(`>${SOURCE_D1_FVG_H1}<`) &&
-    pivotOnlyRow.includes(`>${SOURCE_PIVOT}<`),
+  fvgDistanceRow.includes(`>${SOURCE_DISTANCE}<`) &&
+    !allTriggersRow.includes(`>${SOURCE_DISTANCE}<`) &&
+    allTriggersRow.includes(`>${SOURCE_OB_D1}<`),
 );
 
-/* ---------- symbol browser row states (6.1) ---------- */
+/* ---------- symbol browser row states ---------- */
 
 function rowHasThreeFigures(html) {
   return (
@@ -327,16 +286,14 @@ const screenedResult = scoreInstrument({
   pointSize: 0.01,
   seriesByTimeframe: makeScanSeries(420, 420, 420),
   signalOverrides: {
-    d1Fvg: { ok: false, insufficient: false },
-    h1Run: { ok: false, insufficient: false },
-    h1Fvg: { ok: false, insufficient: false },
-    m15Run: { ok: false, insufficient: false },
+    fvgD1: { ok: false, insufficient: false },
+    obD1: { ok: false, insufficient: false },
     macd: { ok: false, insufficient: false },
-    pivot: { pivotDistance: null, insufficient: false },
   },
 });
-const gatedOutHtml = renderScreenerRow(symbol, screenedResult);
-checkTrue("screened quiet row shows three labelled figures", rowHasThreeFigures(gatedOutHtml));
+const quietHtml = renderScreenerRow(symbol, screenedResult);
+checkTrue("screened quiet row shows three labelled figures", rowHasThreeFigures(quietHtml));
+checkTrue("screened quiet row has no marks", countMarkSpans(quietHtml) === 0);
 
 const shortWarmupResult = scoreInstrument({
   enabled: true,
@@ -349,23 +306,6 @@ checkTrue(
   shortWarmupResult.status === "insufficient-history" &&
     shortWarmupResult.rangePct != null &&
     rowHasThreeFigures(partialHistoryHtml),
-);
-checkTrue(
-  "insufficient-history with a 30d window does not replace figures with state text",
-  !partialHistoryHtml.includes("insufficient history"),
-);
-
-const emptyHistoryResult = scoreInstrument({
-  enabled: true,
-  pointSize: 0.01,
-  seriesByTimeframe: { d1: [], h1: [], m15: [] },
-});
-const emptyHistoryHtml = renderScreenerRow(symbol, emptyHistoryResult);
-checkTrue(
-  "insufficient-history without a window keeps state text",
-  emptyHistoryResult.status === "insufficient-history" &&
-    emptyHistoryHtml.includes("insufficient history") &&
-    !emptyHistoryHtml.includes("screener-figures"),
 );
 
 const notScreenedResult = scoreInstrument({

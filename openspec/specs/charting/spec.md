@@ -20,6 +20,8 @@ Every entry the filters admit SHALL identify its instrument — its symbol, its 
 
 Each entry SHALL additionally carry its screening result: the marks its score earns inline with its symbol code, the short names of the sources that earned its score on a line beneath those marks, its 30-day range, its position in that range, and its headroom to the high of that range. The three figures SHALL be shown together on one line, in that order, each labelled so it cannot be mistaken for another, and each formatted as a percentage to the same precision — the headroom is a third figure added beside the existing two, and SHALL NOT replace, reword or reformat either of them. The figures SHALL be shown for every screened instrument, whether or not it earned a mark, so a list with no marks reads as screened-and-quiet rather than broken. An instrument that could not be screened SHALL say why — not screened, or insufficient history — in place of its figures, and only in place of its figures. A screened instrument for which the screener reports no headroom SHALL show its remaining figures and mark the headroom as unavailable, in the same way an absent range or position already reads.
 
+A screened row that earns no mark and names no source SHALL be treated as an ordinary, expected row rather than an exceptional one. No part of the row SHALL promise that a screened instrument carries at least one mark, because the screener's scoring model awards no automatic point: on a typical day most rows are marked-and-sourced nowhere while still showing their three figures. Such a row SHALL remain visually distinct from a row that states it was not screened or that its history is insufficient, so a blank mark area is never read as a failed or missing computation.
+
 The headroom figure SHALL read as the screener reports it, including when it is zero or negative, and the row SHALL NOT hide, clamp or re-sign it. It SHALL be presented as a fact about the 30-day window like the other two, with no styling that suggests a recommendation, a target or a ranking.
 
 Each source name SHALL read as its own bounded label: green text within a green rectangular outline, unfilled so the row's background shows through. The outline SHALL enclose exactly one source name, so the fired sources are countable without reading the words, and adjacent labels SHALL stay visually separate rather than sharing or touching a border. Every source SHALL receive the same treatment, with no colour, weight or size distinguishing one source from another — the mark count already carries strength. The green SHALL be the green of the marks, so the labels read as belonging to the same signal, and SHALL remain distinguishable from the row's muted range, position, headroom and state text.
@@ -67,7 +69,7 @@ Choosing a filter, a filter value, or a sort order SHALL operate on already-load
 
 #### Scenario: Screening result in the row
 
-- **WHEN** an instrument scores 5 in the screener from the eligibility gate, a D1 gap with an H1 run and a pivot 2 points distant
+- **WHEN** an instrument scores 4 in the screener from a bullish D1 gap trigger, a demand D1 order-block trigger and a distance worth 2 points
 - **THEN** its row shows three marks inline with its symbol, names those three sources on the line beneath, and shows its 30-day range, its position in that range and its headroom to the high of that range
 
 #### Scenario: Three figures on one line
@@ -102,13 +104,18 @@ Choosing a filter, a filter value, or a sort order SHALL operate on already-load
 
 #### Scenario: Rows on the same score read differently
 
-- **WHEN** two instruments both score 4, one from a D1 gap with an H1 run and one from a distant pivot
+- **WHEN** two instruments both score 3, one from a single trigger with a distance worth 2 points and one from all three triggers with a near target
 - **THEN** both show two marks, their source lines name different sources, and the difference is visible without inspecting either row
 
 #### Scenario: Screened but unmarked
 
 - **WHEN** an instrument is screened and earns no mark
 - **THEN** its row shows no marks, names no source, shows no empty outline, and still shows its 30-day range, position and headroom figures
+
+#### Scenario: Most rows carry no mark on a quiet day
+
+- **WHEN** the catalog is screened on a day when few instruments trigger anything
+- **THEN** the many rows showing no marks and no sources read as screened-and-quiet, each still showing its three figures, and none of them is styled or worded as a failure or as an instrument that could not be screened
 
 #### Scenario: Auditing a mark
 
@@ -154,6 +161,11 @@ Choosing a filter, a filter value, or a sort order SHALL operate on already-load
 
 - **WHEN** a disabled instrument, or one with too little stored history, appears in the list
 - **THEN** its row shows its symbol, asset class and name exactly as a screened row does, and states that it was not screened, or that its history is insufficient, where its range, position and headroom figures would otherwise be
+
+#### Scenario: A zero score is not an unscreenable state
+
+- **WHEN** a disabled instrument, an instrument with insufficient history, and an instrument screened with a score of zero appear in the list together
+- **THEN** the first two state why they were not scored in place of their figures, while the third shows its three figures with no marks, and the three rows cannot be mistaken for one another
 
 #### Scenario: Identifying an instrument with insufficient history
 

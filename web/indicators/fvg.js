@@ -14,6 +14,7 @@
  *   segment. Body dominance, bar3's wick limit, and the gap-vs-bar2-range
  *   ratio use these extended measures; the gap itself, zone edges, and drawing
  *   still read recorded OHLC.
+ * - Bearish zones are detected but never drawn (rendering deviation only).
  */
 
 import { mt5Ema, mt5Stochastic } from "./mt5math.js";
@@ -254,6 +255,7 @@ registerIndicator({
     const { zones, warning } = fvgZones(bars, instrument?.point_size ?? 0.01);
     const drawables = [];
     for (const zone of zones) {
+      if (zone.direction !== "bullish") continue;
       const color = FVG_COLORS[zone.direction];
       drawables.push({
         type: "rect",

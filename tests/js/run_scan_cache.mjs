@@ -6,7 +6,6 @@ import {
   SCAN_CACHE_KEY,
   SCAN_CACHE_VERSION,
 } from "../../web/screener/scan.js";
-import { SOURCE_GATE } from "../../web/screener/score.js";
 
 let failures = 0;
 
@@ -71,14 +70,14 @@ const storage = {
 };
 
 store[SCAN_CACHE_KEY] = JSON.stringify({
-  version: 4,
+  version: 7,
   key: cacheKey,
   scores: {
     "CACHE.US": {
       status: "screened",
       score: 1,
       marks: 1,
-      reasons: [{ rule: "Eligibility gate", points: 1 }],
+      reasons: [{ rule: "Eligibility gate", points: 1, source: "gate" }],
       rangePct: 0.1,
       positionPct: 0.2,
     },
@@ -110,11 +109,14 @@ const scores = await runScan({ catalog, storage, getJSON });
 
 check("stale cache triggers recompute", getJsonCalls, 1);
 checkTrue("recomputed result is returned", scores["CACHE.US"] != null);
-checkTrue("recomputed reasons carry source", scores["CACHE.US"].reasons[0]?.source === SOURCE_GATE);
 check(
-  "recomputed gate-only score",
+  "recomputed quiet instrument scores 0 under new model",
   scores["CACHE.US"].score,
-  1,
+  0,
+);
+checkTrue(
+  "recomputed result does not carry old gate source",
+  !scores["CACHE.US"].reasons.some((r) => r.source === "gate"),
 );
 checkTrue(
   "fresh cache is written at current version",
@@ -123,10 +125,7 @@ checkTrue(
     return parsed.version === SCAN_CACHE_VERSION;
   })(),
 );
-checkTrue(
-  "fresh cache reasons carry source",
-  JSON.parse(store[SCAN_CACHE_KEY]).scores["CACHE.US"].reasons[0]?.source === SOURCE_GATE,
-);
+check("cache version is bumped", SCAN_CACHE_VERSION, 8);
 
 const warmStore = { [SCAN_CACHE_KEY]: store[SCAN_CACHE_KEY] };
 const warmStorage = {
