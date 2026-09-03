@@ -10,6 +10,7 @@ import { DEFAULT_DISPLAY_LIMIT } from "../settings.js";
 
 /** Bars visible in the initial view when a series is presented afresh. */
 export const DEFAULT_ZOOM_BARS = 200;
+export const LATEST_RIGHT_MARGIN = 0.1;
 
 /** Re-exported so the two limits sit together: available vs visible. */
 export { DEFAULT_DISPLAY_LIMIT };
@@ -25,4 +26,24 @@ export function defaultVisibleLogicalRange(barCount, rightOffset, zoomBars = DEF
     from: barCount - visibleBars,
     to: lastIndex + rightOffset,
   };
+}
+
+/** Return the logical-bar offset that places the newest bar at the requested
+ * fraction of the chart width while preserving the current zoom span. */
+export function latestRightOffset(
+  logicalRange,
+  rightMargin = LATEST_RIGHT_MARGIN,
+) {
+  if (
+    !logicalRange ||
+    !Number.isFinite(logicalRange.from) ||
+    !Number.isFinite(logicalRange.to) ||
+    logicalRange.to <= logicalRange.from ||
+    !Number.isFinite(rightMargin) ||
+    rightMargin < 0 ||
+    rightMargin >= 1
+  ) {
+    return 0;
+  }
+  return (logicalRange.to - logicalRange.from) * rightMargin;
 }

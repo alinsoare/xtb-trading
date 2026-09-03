@@ -26,7 +26,7 @@ export const VALID_SORT_ORDERS = new Set(["default", "score", "symbol", "name", 
 
 export const DEFAULT_SETTINGS = Object.freeze({
   displayLimit: DEFAULT_DISPLAY_LIMIT,
-  autoScale: false,
+  autoScale: true,
   symbol: null,
   timeframe: null,
   indicators: [],

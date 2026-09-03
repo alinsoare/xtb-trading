@@ -10,7 +10,7 @@
 
 import { formatPrice, priceDecimals } from "./chart/format.js";
 import { AUTO_SCALE_MARGIN, visiblePriceRange } from "./chart/auto-scale.js";
-import { defaultVisibleLogicalRange } from "./chart/viewport.js";
+import { defaultVisibleLogicalRange, latestRightOffset } from "./chart/viewport.js";
 import { suppressPriceAxisScale } from "./chart-tools/scroll-lock.js";
 import { allTools, activeToolId, setActiveTool } from "./chart-tools/registry.js";
 import "./chart-tools/ruler.js"; // registers the ruler tool
@@ -49,7 +49,7 @@ const state = {
   loaded: [],
   bars: [],
   displayLimit: DEFAULT_DISPLAY_LIMIT,
-  autoScale: false,
+  autoScale: true,
   enabledIndicators: new Set(),
   syncPolling: null,
   // Session-only, and deliberately never persisted: restoring it would make the
@@ -347,7 +347,8 @@ function frameDefaultZoom() {
 function jumpToLatest() {
   if (!state.bars.length) return;
   const timeScale = chart.timeScale();
-  const rightOffset = timeScale.options().rightOffset ?? 0;
+  const visibleRange = timeScale.getVisibleLogicalRange();
+  const rightOffset = latestRightOffset(visibleRange);
   // scrollToRealTime() is always animated and can stop short when the chart is
   // still settling; scrollToPosition preserves bar spacing instantly.
   timeScale.scrollToPosition(rightOffset, false);

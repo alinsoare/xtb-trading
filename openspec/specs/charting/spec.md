@@ -229,12 +229,12 @@ When the chart is presented afresh — an instrument selected, a timeframe switc
 
 ### Requirement: Jump to latest data without changing zoom
 
-The chart SHALL offer a control that returns the view to the newest bar of the displayed slice, scrolling so that the newest bar sits at the leading edge of the view while leaving the current zoom — the number of bars the view spans — unchanged. The control SHALL be available whenever a series is charted, including when the view is already at the newest bar, in which case pressing it SHALL leave the view as it is. "Latest" SHALL mean the newest bar already loaded; the control SHALL NOT trigger a market-data fetch or a sync, and SHALL behave identically whether the frontend is served by the local dev backend or as a static export. Because the jump is an ordinary change of view, chart tools and indicators SHALL be unaffected: a drawn measurement SHALL stay anchored to its own bars rather than being discarded.
+The chart SHALL offer a control that returns the view to the newest bar of the displayed slice, scrolling so that the newest bar sits at 90% of the chart width with about 10% of the view clear to its right while leaving the current zoom — the number of bars the view spans — unchanged. The control SHALL be available whenever a series is charted, including when the view is already at the newest bar, in which case pressing it SHALL leave the view as it is. "Latest" SHALL mean the newest bar already loaded; the control SHALL NOT trigger a market-data fetch or a sync, and SHALL behave identically whether the frontend is served by the local dev backend or as a static export. Because the jump is an ordinary change of view, chart tools and indicators SHALL be unaffected: a drawn measurement SHALL stay anchored to its own bars rather than being discarded.
 
 #### Scenario: Returning to the newest bars at a chosen zoom
 
 - **WHEN** the user zooms in to roughly 40 bars, pans far back into history, and presses the jump-to-latest control
-- **THEN** the view returns to the newest bar with the same span of roughly 40 bars still in view
+- **THEN** the view returns to the newest bar at 90% of the chart width, with the same span of roughly 40 bars still in view
 
 #### Scenario: Zoomed out further than the default
 
@@ -299,9 +299,9 @@ The chart SHALL make available at most a bounded number of the most recent bars 
 
 The chart SHALL offer a two-state control, labelled AUTO, that governs how the vertical (price) scale is chosen. The control SHALL sit in the lower-right corner of the chart area, overlaying the price scale, and SHALL be present whenever a chart is presented. It SHALL NOT obscure the crosshair's price label, the crosshair OHLC legend, or the empty-state message, and it SHALL NOT sit over an indicator sub-pane's own scale.
 
-Its state SHALL be visible at a glance — which of the two states is in force SHALL be distinguishable without activating it and without relying on colour alone. Its default SHALL be off.
+Its state SHALL be visible at a glance — which of the two states is in force SHALL be distinguishable without activating it and without relying on colour alone. Its default SHALL be on.
 
-**While off**, the vertical scale SHALL behave exactly as it does today: the user SHALL be able to change it by hand on the price scale, and nothing about the chart's current vertical-scale behavior SHALL change. Off is the state that preserves existing behavior, and a browser that has never seen this control SHALL start in it.
+**While off**, the vertical scale SHALL behave exactly as it does today: the user SHALL be able to change it by hand on the price scale, and nothing about the chart's current vertical-scale behavior SHALL change. Off is the state that preserves existing behavior, but a browser that has never seen this control SHALL start with AUTO on.
 
 **While on**, the vertical scale SHALL be derived from the bars currently visible in the horizontal view: the highest price among them SHALL be placed at 90% of the chart pane's height and the lowest price among them at 10%, measured from the bottom of the pane, leaving a tenth of the height clear above the high and a tenth below the low. Only visible bars SHALL contribute — a bar in the loaded slice but outside the horizontal view SHALL NOT influence the scale, and no bar outside the display limit SHALL be consulted at all. The placement SHALL hold at any container size, because it is expressed as a proportion of the pane's height rather than in pixels.
 
@@ -429,7 +429,7 @@ The UI SHALL remember the user's settings on the same browser and restore them o
 #### Scenario: A browser that predates the control
 
 - **WHEN** the browser holds settings written before the automatic vertical scale existed
-- **THEN** the control restores to off, every other persisted setting is restored as usual, and no error is shown
+- **THEN** the control restores to on, every other persisted setting is restored as usual, and no error is shown
 
 #### Scenario: The derived price range is not restored
 

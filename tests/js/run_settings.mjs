@@ -326,7 +326,7 @@ checkDeep(
   restoreSettings(legacy, LIVE),
   {
     displayLimit: 1200,
-    autoScale: false,
+    autoScale: true,
     symbol: "NVD.DE",
     timeframe: "h1",
     indicators: ["fvg"],
@@ -364,12 +364,12 @@ check(
   false,
 );
 check(
-  "legacy settings without autoScale restore to off",
+  "legacy settings without autoScale restore to on",
   restoreSettings(legacy, LIVE).autoScale,
-  false,
+  true,
 );
 checkDeep(
-  "non-boolean autoScale restores to off without disturbing other fields",
+  "non-boolean autoScale restores to on without disturbing other fields",
   restoreSettings(
     {
       autoScale: "on",

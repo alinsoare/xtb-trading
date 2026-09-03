@@ -5,6 +5,7 @@ import {
   DEFAULT_DISPLAY_LIMIT,
   DEFAULT_ZOOM_BARS,
   defaultVisibleLogicalRange,
+  latestRightOffset,
 } from "../../web/chart/viewport.js";
 
 let failures = 0;
@@ -53,6 +54,10 @@ check(
   defaultVisibleLogicalRange(200, 3),
   { from: 0, to: 202 },
 );
+
+check("latest offset leaves 10% of view to the right", latestRightOffset({ from: 0, to: 200 }), 20);
+check("latest offset preserves a 40-bar zoom", latestRightOffset({ from: 100, to: 140 }), 4);
+check("latest offset handles a missing range", latestRightOffset(null), 0);
 
 if (failures) {
   console.error(`${failures} failure(s)`);

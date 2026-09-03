@@ -90,13 +90,13 @@ than fitting the whole slice. A series with 200 bars or fewer is shown in full.
 Zoom is not persisted across reloads.
 
 The **Latest** button in the toolbar scrolls back to the newest bar without
-changing the current zoom. It reads only bars already in memory and never
-triggers a fetch.
+changing the current zoom, leaving about 10% of the chart width to its right.
+It reads only bars already in memory and never triggers a fetch.
 
 ### What the browser remembers
 
 Settings are stored per browser under a single `localStorage` key and restored
-on the next load: display limit, selected instrument, selected timeframe,
+on the next load: display limit, automatic vertical scale, selected instrument, selected timeframe,
 enabled indicators, and the sidebar filters (search text, asset class,
 compatible-only). Anything that no longer resolves — a renamed instrument, an
 unknown timeframe — falls back to its default without disturbing the rest, and
