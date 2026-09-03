@@ -1,10 +1,4 @@
-# market-data Specification
-
-## Purpose
-
-Covers fetching OHLC bars from Yahoo Finance, persisting and querying them locally, and the per-timeframe fetch depth and append-only storage rules that guarantee indicators always have enough history.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Supported timeframes are H1, D1 and W1
 
@@ -81,67 +75,22 @@ Bars stored under a timeframe the system no longer supports SHALL likewise be re
 - **WHEN** a store that already holds `m15` bars is synced, served and exported after M15 was retired
 - **THEN** those rows are still present afterwards, no request fetched them, and no catalog manifest, candles file, screening payload or chart reports them
 
-### Requirement: Backfill respects the data source's history limits
+## REMOVED Requirements
 
-Initial backfill SHALL request the depth its timeframe defines, and requests SHALL be clamped to how far back Yahoo serves the interval (e.g. `1h` is served for at most ~730 days). A request SHALL never ask for more history than the source can return, because Yahoo answers over-deep requests with an empty frame that is indistinguishable from a dead symbol.
+### Requirement: Supported timeframes
 
-#### Scenario: H1 backfill stays inside the 730-day cap
+**Reason**: It defines the supported set as four timeframes including M15, and carries the sub-hourly trade-off — Yahoo's 60-day cap on `15m` history and the permanent gap that follows from it — as an accepted property of the system. With M15 retired there is no sub-hourly timeframe and therefore no such trade-off to accept.
 
-- **WHEN** the initial H1 backfill would reach further back than Yahoo serves `1h` data
-- **THEN** the request start is clamped inside the cap and the sync succeeds with the bars that are available
+**Migration**: Replaced by "Supported timeframes are H1, D1 and W1", which states the three-timeframe set, requires every supported timeframe to be completely backfillable, and rules out a sub-hourly interval for the reason the old requirement merely tolerated. Callers that requested `m15` receive an unknown-timeframe refusal naming the supported set.
 
-#### Scenario: Full-history request avoids the epoch pitfall
+### Requirement: Fetch depth is fixed per timeframe
 
-- **WHEN** a full refresh requests maximum available history for an unlimited interval
-- **THEN** the request start is a fixed early date after 1970, never the Unix epoch itself, which Yahoo treats as unset
+**Reason**: Its depth table opens with M15's 1,200-bar target, and its worked scenario exists to show that target staying inside the source's 60-day sub-hourly window. Both describe a timeframe the system no longer supports, and no remaining timeframe expresses its depth as a bar count.
 
-### Requirement: Timestamps are UTC epoch seconds with session-date pinning
+**Migration**: Replaced by "Fetch depth is a property of the timeframe", which keeps the H1, D1 and W1 depths and the refusal of per-run depth parameters unchanged, and states that no timeframe's depth is a bar count.
 
-All stored bar timestamps SHALL be UTC epoch seconds. Intraday bars keep their true UTC instant. Daily and weekly bars SHALL be pinned to UTC midnight of the exchange-local session date, because Yahoo stamps them at local midnight (22:00 UTC the prior day for Xetra), which would label every daily candle with the previous day's date.
+### Requirement: Stored bars are never deleted
 
-#### Scenario: Xetra daily bar
+**Reason**: The append-only guarantee itself is unchanged, but the requirement's worked scenario demonstrates it on M15 accumulating past the source's 60-day window, and the requirement says nothing about bars already stored under a timeframe that is later retired — the case this change creates.
 
-- **WHEN** Yahoo returns a daily bar for a Xetra-listed instrument stamped 2026-03-09 22:00 UTC (local midnight 2026-03-10)
-- **THEN** the bar is stored at 2026-03-10 00:00 UTC
-
-### Requirement: Prices are stored unadjusted
-
-Bars SHALL be stored with unadjusted prices (no dividend/split adjustment), matching what a broker's trading platform displays rather than a back-adjusted history. When the catalog declares a price divisor for an instrument (e.g. pence-quoted tickers), it SHALL be applied on ingest.
-
-#### Scenario: Pence-quoted instrument
-
-- **WHEN** an instrument's catalog entry declares a price divisor of 100
-- **THEN** stored prices are the fetched values divided by 100
-
-### Requirement: Incremental fetches with revision overlap
-
-An incremental sync SHALL request only bars from slightly before the newest stored bar onward (a small fixed overlap of recent bars), so Yahoo's late revisions to recent candles overwrite stored values, and repeat syncs stay fast. Only the first sync of a symbol, or an explicit full refresh, performs the deep backfill pull. The incremental start SHALL NOT be pushed forward to the fetch window's start, because a series is allowed to extend further back than that window.
-
-#### Scenario: Repeat sync is small
-
-- **WHEN** a symbol was synced recently and is synced again incrementally
-- **THEN** the request covers only the overlap window plus new bars, not the timeframe's full fetch depth
-
-#### Scenario: Revised bar is overwritten
-
-- **WHEN** Yahoo has revised a recent bar that is already stored
-- **THEN** after the next sync the stored bar reflects the revised values
-
-#### Scenario: A sync never re-downloads the whole series
-
-- **WHEN** an already-synced symbol is synced without full refresh, however deep its stored series has grown
-- **THEN** the request window runs from just before its newest stored bar to the present, and the size of the request does not grow with the stored depth
-
-### Requirement: Empty responses are disambiguated
-
-When a fetch returns no bars, the system SHALL distinguish a dead or mistyped ticker from a live instrument with no new bars, using instrument metadata from the same response, and SHALL report the dead-ticker case as an error naming the symbol.
-
-#### Scenario: Delisted or wrong ticker
-
-- **WHEN** a fetch returns no bars and the source has no metadata for the ticker
-- **THEN** the sync records an error for that symbol suggesting the ticker may be wrong or delisted
-
-#### Scenario: No new bars
-
-- **WHEN** a fetch returns no bars but the source knows the instrument
-- **THEN** the sync records success with a "no new bars" note and the observed currency
+**Migration**: Replaced by "Stored bars are never deleted, retired timeframes included", which restates the same guarantee on H1 and adds that rows of a retired timeframe are retained and inert, so no destructive migration of an existing store or published snapshot is needed.

@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from xtb_charts import api, store
-from xtb_charts.config import TIMEFRAME_ORDER, TIMEFRAMES
+from xtb_charts.config import TIMEFRAME_ORDER, TIMEFRAMES, timeframe
 from xtb_charts.contract import SCAN_BAR_CAP, SCAN_TIMEFRAMES
 from xtb_charts.store import Bar
 
@@ -49,6 +49,8 @@ class TestMeta:
         assert payload["mode"] == "dev"
         assert payload["timeframe_order"] == TIMEFRAME_ORDER
         assert payload["generated_utc"]
+        assert "m15" not in payload["timeframes"]
+        assert len(payload["timeframe_order"]) == 3
         for key, tf in TIMEFRAMES.items():
             entry = payload["timeframes"][key]
             assert entry["label"] == tf.label
@@ -100,7 +102,7 @@ class TestScanBars:
     def test_shape_and_cap(self, client):
         seed("ABEA.DE", "d1", SCAN_BAR_CAP + 50)
         seed("ABEA.DE", "h1", 90)
-        seed("ABEA.DE", "m15", SCAN_BAR_CAP)
+        seed("ABEA.DE", "m15", SCAN_BAR_CAP)  # inert rows: must not appear in payload
         seed("GLD.US", "d1", 10)  # disabled in seed catalog
 
         payload = client.get("/data/scan-bars.json").json()
@@ -110,13 +112,13 @@ class TestScanBars:
 
         abea = payload["symbols"]["ABEA.DE"]
         assert set(abea) == set(SCAN_TIMEFRAMES)
+        assert "m15" not in abea
         for tf_key in SCAN_TIMEFRAMES:
             series = abea[tf_key]
             assert set(series) == {"t", "o", "h", "l", "c"}
 
         assert len(abea["d1"]["t"]) == SCAN_BAR_CAP
         assert len(abea["h1"]["t"]) == 90
-        assert len(abea["m15"]["t"]) == SCAN_BAR_CAP
         assert abea["d1"]["t"] == sorted(abea["d1"]["t"])
         assert abea["d1"]["t"][0] == 1_700_000_000 + 50 * 3600
 
@@ -147,8 +149,58 @@ class TestCandles:
     def test_unknown_timeframe_is_400(self, client):
         assert client.get("/data/candles/ABEA.DE/h4.json").status_code == 400
 
+    def test_retired_m15_timeframe_is_400(self, client):
+        response = client.get("/data/candles/ABEA.DE/m15.json")
+        assert response.status_code == 400
+        assert response.json()["detail"] == (
+            f"unknown timeframe 'm15', expected one of {TIMEFRAME_ORDER}"
+        )
+
     def test_unknown_symbol_is_404(self, client):
         assert client.get("/data/candles/NOPE.XX/d1.json").status_code == 404
+
+
+class TestRetiredTimeframeRows:
+    def test_m15_rows_stay_in_store_but_leave_the_surface(self, client, tmp_path):
+        seed("ABEA.DE", "m15", 12)
+        seed("ABEA.DE", "h1", 5)
+        seed("ABEA.DE", "d1", 5)
+
+        with store.connect() as conn:
+            assert store.bar_count(conn, "ABEA.DE", "m15") == 12
+
+        meta = client.get("/data/meta.json").json()
+        assert "m15" not in meta["timeframes"]
+        assert set(meta["timeframe_order"]) == {"h1", "d1", "w1"}
+
+        catalog = client.get("/data/catalog.json").json()
+        entry = next(s for s in catalog["symbols"] if s["xtb_symbol"] == "ABEA.DE")
+        assert set(entry["timeframes"]) == {"h1", "d1", "w1"}
+        assert entry["timeframes"]["h1"]["bars"] == 5
+
+        scan = client.get("/data/scan-bars.json").json()
+        assert set(scan["symbols"]["ABEA.DE"]) == {"h1", "d1"}
+
+        assert client.get("/data/candles/ABEA.DE/m15.json").status_code == 400
+
+        from xtb_charts.export import export_site
+
+        out = tmp_path / "dist"
+        export_site(out)
+        assert not (out / "data" / "candles" / "ABEA.DE" / "m15.json").exists()
+        exported_scan = json.loads((out / "data" / "scan-bars.json").read_text())
+        assert "m15" not in exported_scan["symbols"]["ABEA.DE"]
+
+        with store.connect() as conn:
+            assert store.bar_count(conn, "ABEA.DE", "m15") == 12
+
+
+class TestTimeframeConfig:
+    def test_unknown_timeframe_raises_with_supported_set(self):
+        with pytest.raises(ValueError, match="unknown timeframe 'm15'"):
+            timeframe("m15")
+        with pytest.raises(ValueError, match="h1, d1, w1"):
+            timeframe("m15")
 
 
 class TestSyncEndpoints:

@@ -46,9 +46,6 @@ function emptyResult(status, rangePct = null, positionPct = null, headroomPct = 
 
 function barsFromSeries(seriesByTimeframe) {
   return {
-    m15: Array.isArray(seriesByTimeframe.m15)
-      ? seriesByTimeframe.m15
-      : columnarToBars(seriesByTimeframe.m15),
     h1: Array.isArray(seriesByTimeframe.h1)
       ? seriesByTimeframe.h1
       : columnarToBars(seriesByTimeframe.h1),

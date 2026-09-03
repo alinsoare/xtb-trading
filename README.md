@@ -33,6 +33,7 @@ node tests/js/run_measure.mjs    # ruler measurement math (dev-time only)
 node tests/js/run_settings.mjs   # persisted settings + display limit (dev-time only)
 node tests/js/run_scroll_lock.mjs # chart-tool drag-pan suppression + undo (dev-time only)
 node tests/js/run_viewport.mjs   # default chart framing (dev-time only)
+node tests/js/run_auto_scale.mjs # AUTO vertical-scale range math (dev-time only)
 node tests/js/run_screener.mjs    # accumulation screener rules (dev-time only)
 ```
 
@@ -51,12 +52,11 @@ same wherever those files come from:
 ## Timeframes and fetch depth
 
 **How deep a sync fetches** is a fixed property of the timeframe, not something
-a run tunes. There is no bar target to set: on three of the four timeframes the
-answer is already "everything the source has".
+a run tunes. There is no bar target to set: on D1 and W1 the answer is already
+"everything the source has".
 
 | Timeframe | Yahoo interval | Initial backfill | Note |
 | --------- | -------------- | ---------------- | ---- |
-| M15       | `15m`          | up to 1,200 bars | Yahoo caps `15m` at 60 days, which usually binds first; older gaps are permanent |
 | H1        | `1h`           | as deep as served | Yahoo caps `1h` at ~730 days |
 | D1        | `1d`           | full history      | uncapped by the source |
 | W1        | `1wk`          | full history      | uncapped by the source |
@@ -64,8 +64,7 @@ answer is already "everything the source has".
 **Storage is append-only.** A sync adds bars and overwrites bars it re-fetched;
 it never deletes one. A series therefore only grows, keeps history the source
 will no longer serve, and may reach further back than the fetch window above.
-Sync M15 at least every 60 days or it develops gaps that can never be
-backfilled — the other timeframes always backfill.
+Every supported timeframe backfills completely.
 
 A repeat sync requests only from just before the newest stored bar, so its cost
 does not grow with how deep the series has become. `--full` re-pulls each
@@ -104,9 +103,10 @@ unknown timeframe — falls back to its default without disturbing the rest, and
 a browser that denies storage just runs on defaults.
 
 Sync state is deliberately excluded, so a reload can never resume fetching:
-**full refresh** and **auto 15m** both come back off. Measurements and zoom
-position are not restored either — the restored instrument and timeframe open on
-the default 200-bar framing instead. None of this travels with the exported data.
+**full refresh** and **auto 15m** both come back off on every load. Measurements
+and zoom position are not restored either — the restored instrument and timeframe
+open on the default 200-bar framing instead. None of this travels with the
+exported data.
 
 ## Periodic refresh (dev mode only)
 
@@ -118,10 +118,12 @@ not exist on the published site, which has no backend to sync with.
 
 Each refresh skips any symbol/timeframe where less than one bar's duration has
 passed since its newest stored bar, because the source cannot yet have a bar
-that is not already held: W1 is left alone for seven days, D1 for 24 hours, so
-in practice only M15 and H1 do any work. A skipped timeframe keeps the
-freshness of the last run that actually fetched it. Pressing a sync button
-always fetches everything — the rule applies to periodic runs only.
+that is not already held: W1 is left alone for seven days, D1 for 24 hours, H1
+for an hour. Only H1 can produce a new bar between ticks; a refresh that finds
+every timeframe too recent fetches nothing and reports every timeframe as
+skipped. A skipped timeframe keeps the freshness of the last run that actually
+fetched it. Pressing a sync button always fetches everything — the rule applies
+to periodic runs only.
 
 ## Indicators
 
@@ -172,7 +174,7 @@ Six deliberate deviations from the source indicator, recorded in `OB_PARAMS`:
 - The skip-bar interval is dropped: the source refuses pivots on bars opening in
   a server-time window below H4, while this port takes **every bar as real
   data**. Parity is therefore claimed only at H4 and above, where that filter is
-  inert in the source; on m15 and h1 the two read different bar sets and their
+  inert in the source; on h1 the two read different bar sets and their
   zones can legitimately differ.
 - Only the source's fresh-load path is reproduced; incremental per-bar
   refinements are not modelled.

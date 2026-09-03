@@ -12,7 +12,7 @@
  * this file would be worthless.
  */
 
-import { suppressDragPan } from "../../web/chart-tools/scroll-lock.js";
+import { suppressDragPan, suppressPriceAxisScale } from "../../web/chart-tools/scroll-lock.js";
 
 let failures = 0;
 
@@ -28,8 +28,17 @@ function check(name, actual, expected) {
 function mergeInPlace(target, patch) {
   for (const key of Object.keys(patch)) {
     const value = patch[key];
-    if (value !== null && typeof value === "object" && !Array.isArray(value) && target[key] !== undefined) {
-      mergeInPlace(target[key], value);
+    const existing = target[key];
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      existing !== undefined &&
+      typeof existing === "object" &&
+      existing !== null &&
+      !Array.isArray(existing)
+    ) {
+      mergeInPlace(existing, value);
     } else {
       target[key] = value;
     }
@@ -37,7 +46,7 @@ function mergeInPlace(target, patch) {
   return target;
 }
 
-function stubChart(handleScroll = {}) {
+function stubChart(handleScroll = {}, handleScale = {}) {
   const options = {
     handleScroll: {
       mouseWheel: true,
@@ -45,6 +54,13 @@ function stubChart(handleScroll = {}) {
       horzTouchDrag: true,
       vertTouchDrag: true,
       ...handleScroll,
+    },
+    handleScale: {
+      mouseWheel: true,
+      pinch: true,
+      axisPressedMouseMove: true,
+      axisDoubleClickReset: true,
+      ...handleScale,
     },
   };
   return {
@@ -112,6 +128,62 @@ const panning = (chart) => chart.options().handleScroll.pressedMouseMove;
   chart.applyOptions({ handleScroll: { pressedMouseMove: false } }); // someone else's change
   restore();
   check("a second call does not overwrite a later change", panning(chart), false);
+}
+
+/* ---------- price-axis scale suppression ---------- */
+
+const priceDrag = (chart) => chart.options().handleScale.axisPressedMouseMove;
+const priceReset = (chart) => chart.options().handleScale.axisDoubleClickReset;
+
+{
+  const chart = stubChart();
+  check("price drag starts enabled", priceDrag(chart), true);
+
+  const restore = suppressPriceAxisScale(chart);
+  checkDeep("price drag is off while suppressed", priceDrag(chart), { time: true, price: false });
+  checkDeep("price reset is off while suppressed", priceReset(chart), { time: true, price: false });
+
+  restore();
+  check("price drag is restored", priceDrag(chart), true);
+  check("price reset is restored", priceReset(chart), true);
+}
+
+{
+  const chart = stubChart({}, { axisPressedMouseMove: { time: false, price: true } });
+  const restore = suppressPriceAxisScale(chart);
+  checkDeep("an object flag is copied before suppression", priceDrag(chart), { time: false, price: false });
+  restore();
+  checkDeep("the pre-suppression object is restored", priceDrag(chart), { time: false, price: true });
+}
+
+{
+  const chart = stubChart();
+  const restore = suppressPriceAxisScale(chart);
+  restore();
+  restore();
+  check("a second price-axis restore is a no-op", priceDrag(chart), true);
+}
+
+{
+  const chart = stubChart();
+  const restore = suppressPriceAxisScale(chart);
+  restore();
+  chart.applyOptions({ handleScale: { axisPressedMouseMove: { time: true, price: false } } });
+  restore();
+  checkDeep(
+    "a stale price-axis restore does not overwrite a later change",
+    priceDrag(chart),
+    { time: true, price: false },
+  );
+}
+
+function checkDeep(name, actual, expected) {
+  const a = JSON.stringify(actual);
+  const b = JSON.stringify(expected);
+  if (a !== b) {
+    failures += 1;
+    console.error(`FAIL ${name}: ${a} != ${b}`);
+  }
 }
 
 if (failures) {

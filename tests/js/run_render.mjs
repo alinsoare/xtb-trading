@@ -275,16 +275,16 @@ function rowHasThreeFigures(html) {
   );
 }
 
-function makeScanSeries(d1Len, h1Len, m15Len) {
+function makeScanSeries(d1Len, h1Len) {
   const bar = (time) => ({ time, open: 100, high: 120, low: 100, close: 110 });
   const mk = (n, step) => Array.from({ length: n }, (_, i) => bar(1_700_000_000 + i * step));
-  return { d1: mk(d1Len, 86400), h1: mk(h1Len, 3600), m15: mk(m15Len, 900) };
+  return { d1: mk(d1Len, 86400), h1: mk(h1Len, 3600) };
 }
 
 const screenedResult = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: makeScanSeries(420, 420, 420),
+  seriesByTimeframe: makeScanSeries(420, 420),
   signalOverrides: {
     fvgD1: { ok: false, insufficient: false },
     obD1: { ok: false, insufficient: false },
@@ -298,7 +298,7 @@ checkTrue("screened quiet row has no marks", countMarkSpans(quietHtml) === 0);
 const shortWarmupResult = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: makeScanSeries(200, 420, 420),
+  seriesByTimeframe: makeScanSeries(200, 420),
 });
 const partialHistoryHtml = renderScreenerRow(symbol, shortWarmupResult);
 checkTrue(

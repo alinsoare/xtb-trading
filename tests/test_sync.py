@@ -126,20 +126,20 @@ class TestWindows:
     def test_incremental_start_is_not_raised_to_the_fetch_window(
         self, db_path, catalog_csv, recorder
     ):
-        # An M15 series that has accumulated past the 60-day cap: the incremental
+        # An H1 series that has accumulated past the 730-day cap: the incremental
         # start sits *outside* the fetch window and must be left there. Clamping
         # it forward is the request-size-grows-with-depth bug this guards.
-        tf = TIMEFRAMES["m15"]
-        seeded = seed_newest(db_path, "AAA.DE", "m15", datetime.now(UTC) - timedelta(days=120))
+        tf = TIMEFRAMES["h1"]
+        seeded = seed_newest(db_path, "AAA.DE", "h1", datetime.now(UTC) - timedelta(days=800))
 
         SyncRunner(db_path, catalog_csv).run(symbols=["AAA.DE"])
-        m15_start = next(c["start"] for c in recorder.calls if c["tf"] == "m15")
+        h1_start = next(c["start"] for c in recorder.calls if c["tf"] == "h1")
 
         expected = datetime.fromtimestamp(seeded.ts, UTC) - timedelta(
             seconds=OVERLAP_BARS * tf.seconds
         )
-        assert m15_start == expected
-        assert m15_start < fetch.backfill_start(tf)
+        assert h1_start == expected
+        assert h1_start < fetch.backfill_start(tf)
 
     def test_repeat_sync_never_shrinks_the_stored_series(
         self, db_path, catalog_csv, recorder
@@ -158,22 +158,22 @@ class TestWindows:
     def test_full_refresh_re_pulls_the_window_and_keeps_older_bars(
         self, db_path, catalog_csv, recorder
     ):
-        # M15 bars from well outside the 60-day cap: a full refresh re-requests
+        # H1 bars from well outside the 730-day cap: a full refresh re-requests
         # the window, and the bars the source can no longer serve stay put.
         old = seed_bars(
-            db_path, "AAA.DE", "m15", 40, end=datetime.now(UTC) - timedelta(days=200)
+            db_path, "AAA.DE", "h1", 40, end=datetime.now(UTC) - timedelta(days=800)
         )
         SyncRunner(db_path, catalog_csv).run(symbols=["AAA.DE"], full=True)
 
-        m15_start = next(c["start"] for c in recorder.calls if c["tf"] == "m15")
-        # The fetch window, not the stored depth: 200-day-old bars do not drag it
+        h1_start = next(c["start"] for c in recorder.calls if c["tf"] == "h1")
+        # The fetch window, not the stored depth: 800-day-old bars do not drag it
         # back, and the request stays inside what the source will serve.
-        assert (datetime.now(UTC) - m15_start).days <= TIMEFRAMES["m15"].yahoo_max_days
-        assert m15_start > datetime.fromtimestamp(old[-1].ts, UTC)
+        assert (datetime.now(UTC) - h1_start).days <= TIMEFRAMES["h1"].yahoo_max_days
+        assert h1_start > datetime.fromtimestamp(old[-1].ts, UTC)
 
         with store.connect(db_path) as conn:
-            assert store.bar_count(conn, "AAA.DE", "m15") == len(old)
-            assert store.first_ts(conn, "AAA.DE", "m15") == old[0].ts
+            assert store.bar_count(conn, "AAA.DE", "h1") == len(old)
+            assert store.first_ts(conn, "AAA.DE", "h1") == old[0].ts
 
     def test_a_sync_never_prunes_what_it_wrote(self, db_path, catalog_csv, monkeypatch):
         tf = TIMEFRAMES["d1"]
@@ -199,8 +199,7 @@ class TestPeriodicSkipping:
         now = datetime.now(UTC)
         seed_newest(db_path, "AAA.DE", "w1", now - timedelta(days=2))  # < 7d: skip
         seed_newest(db_path, "AAA.DE", "d1", now - timedelta(hours=2))  # < 24h: skip
-        seed_newest(db_path, "AAA.DE", "m15", now - timedelta(minutes=20))  # > 15m: fetch
-        # h1 deliberately left empty: no newest bar to measure against.
+        seed_newest(db_path, "AAA.DE", "h1", now - timedelta(minutes=70))  # > 1h: fetch
 
     def test_periodic_run_skips_only_what_cannot_have_a_new_bar(
         self, db_path, catalog_csv, recorder
@@ -210,14 +209,42 @@ class TestPeriodicSkipping:
             symbols=["AAA.DE"], periodic=True
         )
 
-        assert {c["tf"] for c in recorder.calls} == {"m15", "h1"}
+        assert {c["tf"] for c in recorder.calls} == {"h1"}
         assert progress.results[0].skipped == ["d1", "w1"]
         assert progress.periodic is True
+
+    def test_periodic_run_fetches_nothing_when_every_timeframe_is_too_recent(
+        self, db_path, catalog_csv, recorder
+    ):
+        now = datetime.now(UTC)
+        seed_newest(db_path, "AAA.DE", "w1", now - timedelta(days=2))
+        seed_newest(db_path, "AAA.DE", "d1", now - timedelta(hours=2))
+        seed_newest(db_path, "AAA.DE", "h1", now - timedelta(minutes=30))
+        with store.connect(db_path) as conn:
+            store.record_sync(
+                conn, "AAA.DE", "h1", status="ok", message="",
+                last_sync_utc="2026-01-01T00:00:00+00:00", last_bar_ts=42,
+            )
+
+        progress = SyncRunner(db_path, catalog_csv).run(
+            symbols=["AAA.DE"], periodic=True
+        )
+
+        assert recorder.calls == []
+        assert progress.results[0].skipped == ["h1", "d1", "w1"]
+        assert progress.results[0].status == "ok"
+        with store.connect(db_path) as conn:
+            h1 = store.get_sync_state(conn)[("AAA.DE", "h1")]
+        assert h1["last_sync_utc"] == "2026-01-01T00:00:00+00:00"
+        assert h1["last_bar_ts"] == 42
 
     def test_a_timeframe_holding_no_bars_is_never_skipped(
         self, db_path, catalog_csv, recorder
     ):
-        self.seed_mixed_ages(db_path)
+        now = datetime.now(UTC)
+        seed_newest(db_path, "AAA.DE", "w1", now - timedelta(days=2))
+        seed_newest(db_path, "AAA.DE", "d1", now - timedelta(hours=2))
+        # h1 deliberately left empty: no newest bar to measure against.
         SyncRunner(db_path, catalog_csv).run(symbols=["AAA.DE"], periodic=True)
         assert any(c["tf"] == "h1" for c in recorder.calls)
 

@@ -1,7 +1,7 @@
 import { scoreInstrument } from "./score.js";
 
 export const SCAN_CACHE_KEY = "xtb-charts.scan-cache";
-export const SCAN_CACHE_VERSION = 8;
+export const SCAN_CACHE_VERSION = 9;
 
 export function buildCacheKey(symbols) {
   return symbols

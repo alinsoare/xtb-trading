@@ -99,7 +99,6 @@ const getJSON = async (path) => {
       "CACHE.US": {
         d1: gateOpenD1,
         h1: makeBars(400, 1_700_000_000, 3600, 100),
-        m15: makeBars(400, 1_700_000_000, 900, 100),
       },
     },
   };
@@ -125,7 +124,52 @@ checkTrue(
     return parsed.version === SCAN_CACHE_VERSION;
   })(),
 );
-check("cache version is bumped", SCAN_CACHE_VERSION, 8);
+check("cache version is bumped", SCAN_CACHE_VERSION, 9);
+
+store[SCAN_CACHE_KEY] = JSON.stringify({
+  version: 8,
+  key: cacheKey,
+  scores: {
+    "CACHE.US": {
+      status: "screened",
+      score: 2,
+      marks: 2,
+      reasons: [{ rule: "Old model", points: 2, source: "legacy" }],
+      rangePct: 0.1,
+      positionPct: 0.2,
+      headroomPct: 0.3,
+    },
+  },
+});
+
+let v8GetJsonCalls = 0;
+const v8GetJSON = async (path) => {
+  v8GetJsonCalls += 1;
+  return {
+    symbols: {
+      "CACHE.US": {
+        d1: gateOpenD1,
+        h1: makeBars(400, 1_700_000_000, 3600, 100),
+      },
+    },
+  };
+};
+
+const v8Storage = {
+  getItem(key) {
+    return store[key] ?? null;
+  },
+  setItem(key, value) {
+    store[key] = value;
+  },
+};
+
+await runScan({ catalog, storage: v8Storage, getJSON: v8GetJSON });
+check("version 8 cache triggers recompute", v8GetJsonCalls, 1);
+checkTrue(
+  "version 8 cache is rewritten at current version",
+  JSON.parse(store[SCAN_CACHE_KEY]).version === SCAN_CACHE_VERSION,
+);
 
 const warmStore = { [SCAN_CACHE_KEY]: store[SCAN_CACHE_KEY] };
 const warmStorage = {

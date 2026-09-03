@@ -53,15 +53,6 @@ class Timeframe:
 
 
 TIMEFRAMES: dict[str, Timeframe] = {
-    "m15": Timeframe(
-        key="m15",
-        label="M15",
-        yahoo_interval="15m",
-        seconds=15 * 60,
-        yahoo_max_days=60,
-        fetch_bars=1_200,
-        bars_per_calendar_day=26 * 5 / 7,
-    ),
     "h1": Timeframe(
         key="h1",
         label="H1",
@@ -92,7 +83,7 @@ TIMEFRAMES: dict[str, Timeframe] = {
 }
 
 #: Order used by the UI, the sync, and the exporter.
-TIMEFRAME_ORDER = ["m15", "h1", "d1", "w1"]
+TIMEFRAME_ORDER = ["h1", "d1", "w1"]
 
 
 def timeframe(key: str) -> Timeframe:

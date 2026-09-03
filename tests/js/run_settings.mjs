@@ -59,7 +59,7 @@ function stubStorage({ denied = false, initial = null } = {}) {
 
 const LIVE = {
   symbols: ["ABEA.DE", "NVD.DE"],
-  timeframes: ["m15", "h1", "d1", "w1"],
+  timeframes: ["h1", "d1", "w1"],
   indicatorIds: ["fvg"],
   assetClasses: ["STOCK"],
   currencies: ["EUR"],
@@ -109,6 +109,7 @@ check("a missing series is empty", applyDisplayLimit(null, 10).length, 0);
 
 const settings = {
   displayLimit: 1200,
+  autoScale: true,
   symbol: "NVD.DE",
   timeframe: "h1",
   indicators: ["fvg"],
@@ -174,6 +175,30 @@ const salvaged = restoreSettings(stale, LIVE);
 check("unparseable limit falls back", salvaged.displayLimit, DEFAULT_DISPLAY_LIMIT);
 check("an instrument gone from the catalog falls back", salvaged.symbol, null);
 check("an unknown timeframe falls back", salvaged.timeframe, null);
+
+checkDeep(
+  "withdrawn m15 timeframe falls back without disturbing other settings",
+  restoreSettings(
+    {
+      timeframe: "m15",
+      symbol: "NVD.DE",
+      displayLimit: 1200,
+      indicators: ["fvg"],
+      search: "keep",
+      sortOrder: "headroom",
+    },
+    LIVE,
+  ),
+  {
+    ...DEFAULT_SETTINGS,
+    symbol: "NVD.DE",
+    timeframe: null,
+    displayLimit: 1200,
+    indicators: ["fvg"],
+    search: "keep",
+    sortOrder: "headroom",
+  },
+);
 checkDeep("unregistered indicators are dropped", salvaged.indicators, ["fvg"]);
 check("a non-string search falls back", salvaged.search, "");
 check("a null asset class falls back", salvaged.assetClass, "");
@@ -199,6 +224,7 @@ checkDeep(
   {
     ...DEFAULT_SETTINGS,
     displayLimit: 1200,
+    autoScale: true,
     search: "nvid",
     compatibleOnly: true,
     enabledOnly: true,
@@ -300,6 +326,7 @@ checkDeep(
   restoreSettings(legacy, LIVE),
   {
     displayLimit: 1200,
+    autoScale: false,
     symbol: "NVD.DE",
     timeframe: "h1",
     indicators: ["fvg"],
@@ -324,6 +351,42 @@ check(
   "enabledOnly non-boolean falls back",
   restoreSettings({ enabledOnly: "yes" }, LIVE).enabledOnly,
   false,
+);
+
+check(
+  "autoScale true round-trips",
+  restoreSettings({ autoScale: true }, LIVE).autoScale,
+  true,
+);
+check(
+  "autoScale false round-trips",
+  restoreSettings({ autoScale: false }, LIVE).autoScale,
+  false,
+);
+check(
+  "legacy settings without autoScale restore to off",
+  restoreSettings(legacy, LIVE).autoScale,
+  false,
+);
+checkDeep(
+  "non-boolean autoScale restores to off without disturbing other fields",
+  restoreSettings(
+    {
+      autoScale: "on",
+      symbol: "NVD.DE",
+      timeframe: "h1",
+      displayLimit: 1200,
+      search: "keep",
+    },
+    LIVE,
+  ),
+  {
+    ...DEFAULT_SETTINGS,
+    symbol: "NVD.DE",
+    timeframe: "h1",
+    displayLimit: 1200,
+    search: "keep",
+  },
 );
 
 if (failures) {

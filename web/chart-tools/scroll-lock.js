@@ -17,6 +17,16 @@
  * behaviours; the interaction itself is only checkable by hand.
  */
 
+function copyAxisFlag(value) {
+  return typeof value === "object" && value !== null ? { ...value } : value;
+}
+
+function priceAxisOff(value) {
+  if (value === true) return { time: true, price: false };
+  if (typeof value === "object" && value !== null) return { ...value, price: false };
+  return value;
+}
+
 /* Disables drag-panning and returns the function that puts it back. */
 export function suppressDragPan(chart) {
   const previous = { ...chart.options().handleScroll };
@@ -27,5 +37,29 @@ export function suppressDragPan(chart) {
     if (restored) return; // a stale undo must not overwrite a later change
     restored = true;
     chart.applyOptions({ handleScroll: previous });
+  };
+}
+
+/* Disables price-axis drag scaling and double-click reset while AUTO is on. */
+export function suppressPriceAxisScale(chart) {
+  const live = chart.options().handleScale;
+  const previous = {
+    ...live,
+    axisPressedMouseMove: copyAxisFlag(live.axisPressedMouseMove),
+    axisDoubleClickReset: copyAxisFlag(live.axisDoubleClickReset),
+  };
+  chart.applyOptions({
+    handleScale: {
+      ...previous,
+      axisPressedMouseMove: priceAxisOff(previous.axisPressedMouseMove),
+      axisDoubleClickReset: priceAxisOff(previous.axisDoubleClickReset),
+    },
+  });
+
+  let restored = false;
+  return function restore() {
+    if (restored) return;
+    restored = true;
+    chart.applyOptions({ handleScale: previous });
   };
 }

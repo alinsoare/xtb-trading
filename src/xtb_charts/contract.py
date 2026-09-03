@@ -19,7 +19,7 @@ from .catalog import Instrument
 from .config import BASE_CURRENCY, TIMEFRAME_ORDER, TIMEFRAMES
 
 SCAN_BAR_CAP = 420
-SCAN_TIMEFRAMES = ("m15", "h1", "d1")
+SCAN_TIMEFRAMES = ("h1", "d1")
 
 
 def _now_iso() -> str:
@@ -87,7 +87,7 @@ def build_catalog(conn: sqlite3.Connection, instruments: list[Instrument]) -> di
 
 
 def build_scan_bars(conn: sqlite3.Connection, instruments: list[Instrument]) -> dict:
-    """``data/scan-bars.json``: recent M15/H1/D1 bars for enabled instruments.
+    """``data/scan-bars.json``: recent H1/D1 bars for enabled instruments.
 
     Columnar, volume-free, capped at ``SCAN_BAR_CAP`` bars per timeframe (most
     recent, oldest first). Shorter series are served whole.

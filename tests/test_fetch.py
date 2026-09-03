@@ -63,21 +63,6 @@ def ohlc_frame(index: pd.DatetimeIndex, price: float = 100.0) -> pd.DataFrame:
 
 
 class TestBackfillStart:
-    def test_m15_requests_its_depth_inside_the_60_day_cap(self):
-        tf = TIMEFRAMES["m15"]
-        start = fetch.backfill_start(tf, now=NOW)
-        days = (NOW - start).days
-
-        # Never deeper than the cap, which is what stops Yahoo answering with an
-        # empty frame that reads like a dead ticker.
-        assert days <= tf.yahoo_max_days
-        # 1,200 bars is a target, not a promise: at the conservative 18.6
-        # bars/calendar-day estimate the window it wants is ~74 days, so here the
-        # cap binds first and truncates the request. Both outcomes are correct.
-        assert tf.fetch_bars == 1_200
-        assert days * tf.bars_per_calendar_day < tf.fetch_bars
-        assert days >= 40  # still a deep window, not a token one
-
     def test_h1_reaches_the_730_day_cap(self):
         tf = TIMEFRAMES["h1"]
         start = fetch.backfill_start(tf, now=NOW)

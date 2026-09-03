@@ -74,9 +74,9 @@ function tuneWindowTail(d1Bars, { high, low, close }) {
   return d1Bars;
 }
 
-function makeScanSeries(d1Len, h1Len = 5, m15Len = 5) {
+function makeScanSeries(d1Len, h1Len = 5) {
   const mk = (n, step) => Array.from({ length: n }, (_, i) => bar(1_700_000_000 + i * step, 100, 120, 100, 110));
-  return { d1: mk(d1Len, 86400), h1: mk(h1Len, 3600), m15: mk(m15Len, 900) };
+  return { d1: mk(d1Len, 86400), h1: mk(h1Len, 3600) };
 }
 
 /* ---------- conventions ---------- */
@@ -96,7 +96,6 @@ check(
   currentPrice({
     d1: [bar(1, 1, 2, 0.5, 1)],
     h1: [bar(100, 2, 3, 1.5, 2.5)],
-    m15: [bar(50, 3, 4, 2.5, 3.5)],
   }),
   2.5,
 );
@@ -223,7 +222,7 @@ check(
 const insufficient = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: { d1: makeBars(5), h1: makeBars(5), m15: makeBars(5) },
+  seriesByTimeframe: { d1: makeBars(5), h1: makeBars(5) },
 });
 check("insufficient-history carries headroomPct key", "headroomPct" in insufficient, true);
 
@@ -327,7 +326,6 @@ const quietInstrument = scoreInstrument({
   seriesByTimeframe: {
     d1: gateOpenD1,
     h1: makeBars(400, 1_700_000_000, 3600, 100),
-    m15: makeBars(400, 1_700_000_000, 900, 100),
   },
   signalOverrides: {
     fvgD1: { ok: false, insufficient: false },
@@ -359,13 +357,13 @@ const sharedOverrides = {
 const highHeadroomScore = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: { d1: highHeadroomD1, h1: makeBars(5), m15: makeBars(5) },
+  seriesByTimeframe: { d1: highHeadroomD1, h1: makeBars(5) },
   signalOverrides: sharedOverrides,
 });
 const lowHeadroomScore = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: { d1: lowHeadroomD1, h1: makeBars(5), m15: makeBars(5) },
+  seriesByTimeframe: { d1: lowHeadroomD1, h1: makeBars(5) },
   signalOverrides: sharedOverrides,
 });
 checkTrue(
@@ -374,15 +372,15 @@ checkTrue(
     highHeadroomScore.score === lowHeadroomScore.score,
 );
 
-const shortH1M15 = scoreInstrument({
+const shortH1 = scoreInstrument({
   enabled: true,
   pointSize: 0.01,
-  seriesByTimeframe: makeScanSeries(420, 3, 3),
+  seriesByTimeframe: makeScanSeries(420, 3),
   signalOverrides: sharedOverrides,
 });
 check(
-  "short H1 and M15 do not cause insufficient history",
-  shortH1M15.status,
+  "short H1 does not cause insufficient history",
+  shortH1.status,
   "screened",
 );
 
@@ -408,7 +406,7 @@ checkDeep(
   scoreInstrument({
     enabled: true,
     pointSize: 0.01,
-    seriesByTimeframe: { d1: makeBars(5), h1: makeBars(5), m15: makeBars(5) },
+    seriesByTimeframe: { d1: makeBars(5), h1: makeBars(5) },
   }).status,
   "insufficient-history",
 );

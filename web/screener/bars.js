@@ -4,7 +4,7 @@
  * geometry and columnar conversion cannot drift apart.
  */
 
-export const SCAN_TIMEFRAMES = ["m15", "h1", "d1"];
+export const SCAN_TIMEFRAMES = ["h1", "d1"];
 export const RANGE_WINDOW_DAYS = 30;
 
 /** Last completed bar index. Matches j3Newest in fvg.js and lastCompletedJs in ob-structure.js. */
@@ -16,8 +16,7 @@ export function lastCompletedIndex(bars) {
 export function currentPrice(seriesByTimeframe) {
   let bestTs = -Infinity;
   let price = null;
-  for (const tf of SCAN_TIMEFRAMES) {
-    const bars = seriesByTimeframe[tf];
+  for (const bars of Object.values(seriesByTimeframe)) {
     if (!bars?.length) continue;
     const newest = bars[bars.length - 1];
     if (newest.time > bestTs) {

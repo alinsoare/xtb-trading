@@ -9,7 +9,9 @@
  */
 
 import { formatPrice, priceDecimals } from "./chart/format.js";
+import { AUTO_SCALE_MARGIN, visiblePriceRange } from "./chart/auto-scale.js";
 import { defaultVisibleLogicalRange } from "./chart/viewport.js";
+import { suppressPriceAxisScale } from "./chart-tools/scroll-lock.js";
 import { allTools, activeToolId, setActiveTool } from "./chart-tools/registry.js";
 import "./chart-tools/ruler.js"; // registers the ruler tool
 import { allIndicators, IndicatorPrimitive } from "./indicators/registry.js";
@@ -31,8 +33,8 @@ import { visibleSymbolList } from "./symbol-list.js";
 import { renderScreenerRow } from "./screener/render.js";
 import { runScan } from "./screener/scan.js";
 
-/* An incremental sync, repeated while the user leaves the control on. Long
- * enough that the skip rule leaves only M15 and H1 actually fetching. */
+/* An incremental sync, repeated while the user leaves the control on. With
+ * the finest timeframe hourly, most ticks skip every series and fetch nothing. */
 const PERIODIC_REFRESH_MS = 15 * 60 * 1000;
 
 const storage = browserStorage();
@@ -47,6 +49,7 @@ const state = {
   loaded: [],
   bars: [],
   displayLimit: DEFAULT_DISPLAY_LIMIT,
+  autoScale: false,
   enabledIndicators: new Set(),
   syncPolling: null,
   // Session-only, and deliberately never persisted: restoring it would make the
@@ -91,6 +94,7 @@ const el = {
   progressText: document.getElementById("progress-text"),
   empty: document.getElementById("chart-empty"),
   legend: document.getElementById("legend"),
+  autoScale: document.getElementById("auto-scale"),
   footer: document.getElementById("meta-footer"),
 };
 
@@ -118,7 +122,17 @@ const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
   borderVisible: false,
   wickUpColor: "#26a69a",
   wickDownColor: "#ef5350",
+  autoscaleInfoProvider: (original) => {
+    if (!state.autoScale) return original;
+    const logicalRange = chart.timeScale().getVisibleLogicalRange();
+    if (!logicalRange) return original;
+    const priceRange = visiblePriceRange(state.bars, logicalRange);
+    if (!priceRange) return original;
+    return { priceRange };
+  },
 });
+
+let restorePriceAxisScale = null;
 
 const indicatorPrimitive = new IndicatorPrimitive();
 candleSeries.attachPrimitive(indicatorPrimitive);
@@ -279,6 +293,7 @@ async function loadCandles() {
   state.loaded = data.candles || [];
   applySlice();
   frameDefaultZoom();
+  applyAutoScaleIfEnabled();
   renderHeader();
 }
 
@@ -292,6 +307,7 @@ function applySlice() {
   candleSeries.setData(state.bars);
   el.empty.classList.toggle("hidden", state.bars.length > 0);
   el.jumpToLatest.disabled = state.bars.length === 0;
+  el.autoScale.disabled = state.bars.length === 0;
   recomputeIndicators();
 }
 
@@ -335,6 +351,48 @@ function jumpToLatest() {
   // scrollToRealTime() is always animated and can stop short when the chart is
   // still settling; scrollToPosition preserves bar spacing instantly.
   timeScale.scrollToPosition(rightOffset, false);
+}
+
+function renderAutoScaleButton() {
+  el.autoScale.setAttribute("aria-pressed", state.autoScale ? "true" : "false");
+  el.autoScale.classList.toggle("active", state.autoScale);
+}
+
+function setAutoScaleEnabled(on) {
+  if (state.autoScale === on) {
+    renderAutoScaleButton();
+    return;
+  }
+  state.autoScale = on;
+  renderAutoScaleButton();
+
+  if (on) {
+    chart.priceScale("right").applyOptions({
+      autoScale: true,
+      scaleMargins: { top: AUTO_SCALE_MARGIN, bottom: AUTO_SCALE_MARGIN },
+    });
+    restorePriceAxisScale = suppressPriceAxisScale(chart);
+  } else {
+    chart.priceScale("right").applyOptions({ autoScale: false });
+    restorePriceAxisScale?.();
+    restorePriceAxisScale = null;
+  }
+}
+
+function applyAutoScaleIfEnabled() {
+  if (!state.autoScale) return;
+  chart.priceScale("right").applyOptions({
+    autoScale: true,
+    scaleMargins: { top: AUTO_SCALE_MARGIN, bottom: AUTO_SCALE_MARGIN },
+  });
+  restorePriceAxisScale?.();
+  restorePriceAxisScale = suppressPriceAxisScale(chart);
+}
+
+function toggleAutoScale() {
+  if (!state.bars.length) return;
+  setAutoScaleEnabled(!state.autoScale);
+  persist();
 }
 
 /* ---------- Indicators ---------- */
@@ -705,6 +763,7 @@ function persist() {
   if (!state.ready) return;
   writeSettings(storage, {
     displayLimit: state.displayLimit,
+    autoScale: state.autoScale,
     symbol: state.selected,
     timeframe: state.timeframe,
     indicators: [...state.enabledIndicators],
@@ -774,6 +833,7 @@ el.enabledOnly.addEventListener("change", onFilterChange);
 el.clearFilters.addEventListener("click", clearSidebarFilters);
 el.displayLimit.addEventListener("change", () => changeDisplayLimit(el.displayLimit.value));
 el.jumpToLatest.addEventListener("click", jumpToLatest);
+el.autoScale.addEventListener("click", toggleAutoScale);
 el.syncAll.addEventListener("click", () => startSync(null));
 el.syncSelected.addEventListener("click", () =>
   startSync(state.selected ? [state.selected] : null),
@@ -814,6 +874,7 @@ async function boot() {
   });
 
   state.displayLimit = restored.displayLimit;
+  state.autoScale = restored.autoScale;
   state.timeframe = restored.timeframe || defaultTimeframe;
   state.enabledIndicators = new Set(restored.indicators);
   el.displayLimit.value = limitToText(state.displayLimit);
@@ -828,6 +889,7 @@ async function boot() {
   renderTimeframes();
   renderIndicatorToggles();
   renderChartTools();
+  renderAutoScaleButton();
   renderFooter();
   renderList();
   renderSummary();

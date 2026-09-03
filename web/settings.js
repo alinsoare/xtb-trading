@@ -26,6 +26,7 @@ export const VALID_SORT_ORDERS = new Set(["default", "score", "symbol", "name", 
 
 export const DEFAULT_SETTINGS = Object.freeze({
   displayLimit: DEFAULT_DISPLAY_LIMIT,
+  autoScale: false,
   symbol: null,
   timeframe: null,
   indicators: [],
@@ -139,6 +140,8 @@ export function restoreSettings(stored, live = {}) {
 
   return {
     displayLimit: parseDisplayLimit(source.displayLimit) ?? DEFAULT_SETTINGS.displayLimit,
+    autoScale:
+      typeof source.autoScale === "boolean" ? source.autoScale : DEFAULT_SETTINGS.autoScale,
     symbol: symbols.includes(source.symbol) ? source.symbol : DEFAULT_SETTINGS.symbol,
     timeframe: timeframes.includes(source.timeframe)
       ? source.timeframe

@@ -36,22 +36,30 @@ switched timeframe, or toggled an indicator.
 
 A screening payload SHALL be served by the dev backend and written by the exporter as one
 file with identical content, so screening behaves the same with a backend and on the static
-site. It SHALL carry, for each **enabled** instrument, the most recent bars of M15, H1 and D1
+site. It SHALL carry, for each **enabled** instrument, the most recent bars of H1 and D1
 up to a fixed per-timeframe cap, with each bar's timestamp, open, high, low and close.
+
+The payload SHALL carry exactly the timeframes the screening conventions and rules read — no
+timeframe the system does not support, and none that nothing reads.
 
 The cap SHALL be 420 bars per timeframe — enough for every signal's warm-up with room for a
 zone detected before the warm-up boundary to still be live at the newest bar — and a series
 holding fewer bars SHALL be served in full rather than padded.
 
 The payload SHALL be retrievable in a single request for the whole catalog, because screening
-44 instruments across 3 timeframes through the per-symbol chart files would cost over a
-hundred requests and roughly 15 MB. Volume SHALL be omitted, since no screening signal uses
+44 instruments across 2 timeframes through the per-symbol chart files would cost dozens of
+requests and several megabytes. Volume SHALL be omitted, since no screening signal uses
 it. Disabled instruments SHALL be absent from the payload.
 
 #### Scenario: One request covers the catalog
 
 - **WHEN** the app screens the catalog
-- **THEN** it retrieves the bars for every enabled instrument and all three timeframes in a single request
+- **THEN** it retrieves the bars for every enabled instrument and both timeframes in a single request
+
+#### Scenario: The payload carries no retired timeframe
+
+- **WHEN** the payload is built from a store that still holds M15 bars
+- **THEN** no instrument's entry carries an M15 series, and the entry carries H1 and D1 only
 
 #### Scenario: Bars are capped
 
@@ -140,10 +148,13 @@ can never disagree about what "the last bar" or "the current price" means:
 
 - **Forming bar.** The newest stored bar of any timeframe is treated as still forming. The last
   completed bar is the one before it, and every rule about completed bars SHALL start there.
-- **Current price.** The close of the most recent bar across the three screened timeframes, chosen by
-  timestamp, so a timeframe that failed to sync cannot supply a stale price. The finer timeframes
-  therefore remain part of the screening payload even though no scoring rule reads their bars
-  directly: removing them would change what the current price means.
+- **Current price.** The close of the most recent bar across the screened timeframes, chosen by
+  timestamp, so a timeframe that failed to sync cannot supply a stale price. H1 therefore remains
+  part of the screening payload even though no scoring rule reads its bars directly: it is the finest
+  supported timeframe, so it is where an intraday price comes from, and removing it would change what
+  the current price means. The convention SHALL be defined over whichever timeframes the payload
+  carries rather than over a fixed count of them, so retiring or adding a screened timeframe changes
+  which bars are considered without changing the rule.
 - **Live zone.** A detected zone is live when it still extends to the newest stored bar, judged by the
   liveness notion the producing indicator already carries — a fair-value-gap zone expires a fixed
   number of bars after its first bar, and an order-block zone carries a flag stating that it extends
@@ -172,6 +183,11 @@ weights and boundaries can be tuned without editing logic.
 
 - **WHEN** one screened timeframe's newest bar is days older than another's
 - **THEN** the current price comes from the timeframe holding the most recent bar
+
+#### Scenario: The intraday price comes from the finest supported timeframe
+
+- **WHEN** an instrument's newest H1 bar is more recent than its newest D1 bar
+- **THEN** the current price is that H1 bar's close, and no finer timeframe is consulted
 
 #### Scenario: The touch test reads today's bar
 
@@ -540,6 +556,12 @@ computed**. A result written under a superseded scoring model SHALL be recompute
 rather than rendered as a score, a mark count or a set of sources the current model would never
 produce, and this SHALL NOT require the user to sync.
 
+A change to **which timeframes a result was computed from** SHALL count as a change to how a result is
+computed, whether or not any trigger, weight or band changed. A result written while a retired
+timeframe could supply the current price SHALL be recomputed before it is shown, because the price
+underneath its figures and its distance component may differ from what the current set of screened
+timeframes yields, and this SHALL NOT require the user to sync.
+
 #### Scenario: Nothing synced since last visit
 
 - **WHEN** the user reloads the page and no instrument has synced since the previous load
@@ -568,3 +590,10 @@ produce, and this SHALL NOT require the user to sync.
   instrument has synced since
 - **THEN** the catalog is re-screened under the current model, and no row shows a score, a mark count
   or a source the current model cannot produce
+
+#### Scenario: A cache written while M15 was screened is not reused
+
+- **WHEN** the user opens the list with a cache written while M15 was one of the screened timeframes,
+  and no instrument has synced since
+- **THEN** the payload is fetched, the catalog is re-screened over the current timeframes, and no row
+  shows a figure or a distance score derived from an M15 price
