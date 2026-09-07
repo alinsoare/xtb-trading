@@ -3,7 +3,16 @@
 The frontend fetches these shapes at the same relative URLs in both modes:
 - ``data/meta.json``
 - ``data/catalog.json``
+- ``data/scan-bars.json``
+- ``data/screener-scores.json``
 - ``data/candles/<symbol>/<timeframe>.json``
+
+``data/screener-scores.json`` carries one scored entry per catalog symbol (enabled
+and disabled), keyed by ``xtb_symbol``. Each entry mirrors ``scoreInstrument()``
+from ``web/screener/score.js``. File-level fields include ``generated_utc`` (from
+the catalog snapshot), ``scoring_model_version`` (``SCAN_CACHE_VERSION`` in
+``scan.js``), and summary counts. Consumers should ignore unknown fields; breaking
+changes are signaled by ``scoring_model_version``.
 
 Both the dev API and the exporter build their payloads here, so the two
 cannot drift apart.

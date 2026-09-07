@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
 
 from xtb_charts import api, store
-from xtb_charts.config import TIMEFRAME_ORDER
+from xtb_charts.config import ROOT, TIMEFRAME_ORDER
 from xtb_charts.export import export_site
 from xtb_charts.store import Bar
+
+
+def scan_cache_version() -> int:
+    scan_js = (ROOT / "web" / "screener" / "scan.js").read_text(encoding="utf-8")
+    match = re.search(r"SCAN_CACHE_VERSION = (\d+)", scan_js)
+    assert match, "SCAN_CACHE_VERSION not found in scan.js"
+    return int(match.group(1))
 
 
 @pytest.fixture
@@ -64,6 +72,21 @@ def test_export_round_trip(client, tmp_path):
     exported_scan.pop("generated_utc")
     dev_scan.pop("generated_utc")
     assert exported_scan == dev_scan
+
+    # screener-scores.json: identical modulo generation time.
+    exported_scores = json.loads((out / "data" / "screener-scores.json").read_text())
+    dev_scores = client.get("/data/screener-scores.json").json()
+    assert exported_scores["scoring_model_version"] == scan_cache_version()
+    assert exported_scores["scoring_model_version"] == dev_scores["scoring_model_version"]
+    exported_scores.pop("generated_utc")
+    dev_scores.pop("generated_utc")
+    assert exported_scores == dev_scores
+
+    disabled = exported_scores["symbols"]["GLD.US"]
+    assert disabled["status"] == "not-screened"
+    assert disabled["score"] == 0
+    assert disabled["marks"] == 0
+    assert disabled["reasons"] == []
 
     # Candle files exist for every symbol and timeframe, byte-identical in shape.
     symbols = [s["xtb_symbol"] for s in exported_catalog["symbols"]]

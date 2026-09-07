@@ -3,6 +3,9 @@
 Writes the frontend plus the same JSON contract the dev server serves — built
 by the shared ``contract`` module, so the two cannot drift — into an output
 directory that any plain static file server (or GitHub Pages) can host.
+
+``data/screener-scores.json`` is built by invoking ``scripts/build-screener-scores.mjs``
+(Node required) so scores match ``web/screener/score.js`` exactly.
 """
 
 from __future__ import annotations
@@ -11,7 +14,7 @@ import json
 import shutil
 from pathlib import Path
 
-from . import contract, store
+from . import contract, screener_scores, store
 from .catalog import load_catalog
 from .config import TIMEFRAME_ORDER, WEB_DIR
 
@@ -31,11 +34,13 @@ def export_site(out_dir: Path) -> int:
 
     with store.connect() as conn:
         written += _write_json(data_dir / "meta.json", contract.build_meta(conn, mode="static"))
+        catalog = contract.build_catalog(conn, instruments)
+        scan_bars = contract.build_scan_bars(conn, instruments)
+        written += _write_json(data_dir / "catalog.json", catalog)
+        written += _write_json(data_dir / "scan-bars.json", scan_bars)
         written += _write_json(
-            data_dir / "catalog.json", contract.build_catalog(conn, instruments)
-        )
-        written += _write_json(
-            data_dir / "scan-bars.json", contract.build_scan_bars(conn, instruments)
+            data_dir / "screener-scores.json",
+            screener_scores.build_screener_scores(catalog, scan_bars),
         )
         for instrument in instruments:
             symbol_dir = data_dir / "candles" / instrument.xtb_symbol

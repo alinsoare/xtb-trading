@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 
-from . import contract, store
+from . import contract, screener_scores, store
 from .catalog import by_xtb_symbol, load_catalog
 from .config import TIMEFRAME_ORDER, TIMEFRAMES, WEB_DIR
 from .sync import runner
@@ -60,6 +60,15 @@ def scan_bars() -> dict:
     instruments = load_catalog()
     with store.connect() as conn:
         return contract.build_scan_bars(conn, instruments)
+
+
+@app.get("/data/screener-scores.json")
+def screener_scores_payload() -> dict:
+    instruments = load_catalog()
+    with store.connect() as conn:
+        catalog = contract.build_catalog(conn, instruments)
+        scan_bars = contract.build_scan_bars(conn, instruments)
+        return screener_scores.build_screener_scores(catalog, scan_bars)
 
 
 @app.get("/data/candles/{symbol}/{timeframe}.json")
